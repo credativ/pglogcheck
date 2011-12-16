@@ -1,0 +1,133 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Getopt::Long;
+Getopt::Long::Configure ("bundling");
+
+my ($key1, $key2) = qw(total n);
+my $examples = 0;
+
+GetOptions (
+	"avg|average|a" => sub { ($key1, $key2) = qw(avg n) },
+	"count|c" => sub { ($key1, $key2) = qw(n total) },
+	"total|t" => sub { ($key1, $key2) = qw(total n) },
+	"examples|e:10" => \$examples,
+);
+
+my %statement;
+
+sub fmt ($);
+sub fmt ($)
+{
+	my $ms = shift;
+	if ($ms < 1.0) {
+		sprintf "%.3f ms", $ms * 1000.0;
+	} elsif ($ms < 60.0) {
+		sprintf "%.3f s", $ms;
+	} elsif ($ms < 86400.0) {
+		sprintf "%d:%02d:%02.3f", int ($ms / 3600.0), int (($ms % 3600.0) / 60.0), $ms % 60.0;
+	} else {
+		sprintf ("%.3f d ", $ms / 86400.0) . fmt ($ms % 86400.0);
+	}
+}
+
+sub eat_ticks ($)
+{
+	my $msg = shift;
+	$msg =~ s/'.+?'/'...'/g;
+	return $msg;
+}
+
+my $last = '';
+sub parse ($$$)
+{
+	my ($line, $type, $msg) = @_;
+	my $key = $msg;
+	my $time;
+
+	if ($msg =~ /^Dauer: ([\d.]+) ms  Anweisung: (.*)/) {
+		($time, $key, $msg) = ($1 / 1000.0, $2, $2);
+		$key = eat_ticks ($key);
+		#$key =~ s/(values\s*)(\(.*\))/$1 . eat_ticks($2)/ei;
+		#$key =~ s/(where\b)(\(.*\))/$1 . eat_ticks($2)/ei;
+
+	} elsif ($msg =~ /^(Verbindung empfangen):/) {
+		$key = $1;
+		$msg =~ s/ port=\S+//;
+
+	} elsif ($msg =~ /^(Verbindung authorisiert|checkpoint starting):/) {
+		$key = $1;
+
+	} elsif ($msg =~ /^(unvollst..?ndiges Startpaket|konnte Daten vom Client nicht empfangen|unerwartetes EOF auf Client-Verbindung)/) {
+
+	# checkpoint complete: wrote 0 buffers (0.0%); 0 transaction log file(s) added, 0 removed, 0 recycled; write=0.000 s, sync=0.000 s, total=0.008 s
+	} elsif ($msg =~ /^checkpoint complete: .* total=([\d.]+) s/) {
+		$time = $1;
+		$key =~ s/[\d.]+/?/g; # eat all numbers
+		$msg =~ s/[\d.]+(%| s)/?$1/g; # eat percentages and times
+		$msg =~ s/[1-9][\d.]*/N/g; # eat non-zero numbers
+
+	} else {
+		print STDERR "Could not parse line $.: $type:  $msg\n";
+		return;
+	}
+
+	$statement{$key}->{type} = $type;
+	$statement{$key}->{n}++;
+	$statement{$key}->{total} += $time if ($time);
+	$statement{$key}->{examples}->{$msg}->{n}++;
+	push @{ $statement{$key}->{examples}->{$msg}->{msg} }, $line;
+	$last = $key;
+}
+
+while (<>) {
+	chomp;
+	if (/(.*?) (LOG):  (.*)/) {
+		parse ($_, $2, $3);
+	} elsif (/(.*?) (FEHLER):  (.*)/) {
+		$last = $3;
+		$statement{$3}->{type} = $2;
+		$statement{$3}->{n}++;
+	} elsif (/(.*?) (ANWEISUNG):  (.*)/) {
+		my ($msg, $key) = ($3, $3);
+		$key =~ s/(values\s*)(\(.*\))/$1 . eat_ticks($2)/ei;
+		$statement{$last}->{examples}->{$key}->{n}++;
+		push @{ $statement{$last}->{examples}->{$key}->{msg} }, $_;
+	} else {
+		print STDERR "Could not parse line $.: " . substr ($_, 0, 200) . "\n";
+	}
+}
+
+delete $statement{''}; # undefined $last
+
+foreach my $s (keys %statement) {
+	$statement{$s}->{total} ||= 0;
+	$statement{$s}->{avg} = $statement{$s}->{total} / $statement{$s}->{n};
+}
+
+my $i = 1;
+foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
+		      $statement{$b}->{$key2} <=> $statement{$a}->{$key2} } keys %statement) {
+	printf "%d: %d times%s\n    %s: %s\n",
+		$i++,
+		$statement{$s}->{n},
+		($statement{$s}->{total} ? sprintf (", %s total, %s avg", fmt ($statement{$s}->{total}), fmt ($statement{$s}->{avg})) : ''),
+		$statement{$s}->{type},
+		$s;
+
+	my $s_ex = $statement{$s}->{examples};
+	foreach my $ex (sort { $s_ex->{$b}->{n} <=> $s_ex->{$a}->{n} } keys %$s_ex) {
+		printf "        %d times: %s\n",
+			$s_ex->{$ex}->{n},
+			substr ($ex, 0, 200);
+		if ($examples) {
+			my $j;
+			foreach my $msg (@{ $s_ex->{$ex}->{msg} }) {
+				printf "            %s\n",
+					substr ($msg, 0, 200);
+				last if (++$j >= $examples);
+			}
+		}
+	}
+}
