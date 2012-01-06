@@ -6,19 +6,22 @@ use Getopt::Long;
 Getopt::Long::Configure ("bundling");
 
 my ($key1, $key2) = qw(total n);
-my $examples = 0;
+my $examples1 = 10;
+my $examples2 = 0;
+my $keylen = 300;
+my $substrlen = 1500;
 
 GetOptions (
 	"avg|average|a" => sub { ($key1, $key2) = qw(avg n) },
 	"count|c" => sub { ($key1, $key2) = qw(n total) },
 	"total|t" => sub { ($key1, $key2) = qw(total n) },
-	"examples|e:10" => \$examples,
+	"examples|e:10" => \$examples2,
 );
 
 my %statement;
 
-sub fmt ($);
-sub fmt ($)
+sub fmt_t ($);
+sub fmt_t ($)
 {
 	my $ms = shift;
 	if ($ms < 1.0) {
@@ -26,108 +29,193 @@ sub fmt ($)
 	} elsif ($ms < 60.0) {
 		sprintf "%.3f s", $ms;
 	} elsif ($ms < 86400.0) {
-		sprintf "%d:%02d:%02.3f", int ($ms / 3600.0), int (($ms % 3600.0) / 60.0), $ms % 60.0;
+		sprintf "%d:%02d:%02.0f", int ($ms / 3600.0), int (($ms % 3600.0) / 60.0), $ms % 60.0;
 	} else {
-		sprintf ("%.3f d ", $ms / 86400.0) . fmt ($ms % 86400.0);
+		sprintf ("%d d ", int ($ms / 86400.0)) . fmt_t ($ms % 86400.0);
 	}
+}
+
+sub fmt_s ($)
+{
+	my $str = shift;
+	$str =~ s/&/&amp;/g;
+	$str =~ s/</&lt;/g;
+	$str =~ s/>/&gt;/g;
+	$str =~ s/\n/<br \/>\n/g;
+	return substr ($str, 0, $substrlen);
+}
+
+sub dots ($)
+{
+	my $str = shift;
+	my $l = length $str;
+	$l = 3 if ($l > 0);
+	return '.' x $l;
+}
+
+sub eat_strings ($)
+{
+	my $str = shift;
+	$str =~ s/[^,]+/?/g;
+	return $str;
+}
+
+sub eat_values ($)
+{
+	my $msg = shift;
+	$msg =~ s/(\bIN\s*\()(.*?)\)/$1...)/ig;
+	$msg =~ s/(\bVALUES\s*\()(.*)\)/$1 . eat_strings ($2) . ')'/ieg;
+	$msg =~ s/'(.*?)'/"'" . dots ($1) . "'"/egs;
+	return $msg;
 }
 
 sub eat_ticks ($)
 {
 	my $msg = shift;
-	$msg =~ s/'.+?'/'...'/g;
+	$msg =~ s/'(.*?)'/"'" . dots ($1) . "'"/egs;
 	return $msg;
 }
 
-my $last = '';
+my ($lastkey, $lastmsg);
 sub parse ($$$)
 {
 	my ($line, $type, $msg) = @_;
+	#print STDERR "Parsing $line\n  $type\n  $msg\n";
 	my $key = $msg;
 	my $time;
 
-	if ($msg =~ /^Dauer: ([\d.]+) ms  Anweisung: (.*)/) {
-		($time, $key, $msg) = ($1 / 1000.0, $2, $2);
-		$key = eat_ticks ($key);
-		#$key =~ s/(values\s*)(\(.*\))/$1 . eat_ticks($2)/ei;
-		#$key =~ s/(where\b)(\(.*\))/$1 . eat_ticks($2)/ei;
+	if ($type eq 'LOG') {
+		if ($msg =~ /^Dauer: ([\d.]+) ms  Anweisung: (.*)/s) {
+			($time, $key, $msg) = ($1 / 1000.0, eat_values ($2), eat_ticks ($2));
 
-	} elsif ($msg =~ /^(Verbindung empfangen):/) {
-		$key = $1;
-		$msg =~ s/ port=\S+//;
+		} elsif ($msg =~ /^Dauer: ([\d.]+) ms  (Ausführen|Parsen) (.*): (.*)/s) {
+			my ($cmd, $name, $query);
+			($time, $cmd, $name, $query) = ($1 / 1000.0, $2, $3, $4);
+			$name =~ s/\d/N/g;
+			$msg = "$cmd $name: $query";
+			$key = eat_ticks ($msg);
 
-	} elsif ($msg =~ /^(Verbindung authorisiert|checkpoint starting):/) {
-		$key = $1;
+		} elsif ($msg =~ /^(Verbindung empfangen):/) {
+			$key = $1;
+			$msg =~ s/ port=\S+//;
 
-	} elsif ($msg =~ /^(unvollst..?ndiges Startpaket|konnte Daten vom Client nicht empfangen|unerwartetes EOF auf Client-Verbindung)/) {
+		} elsif ($msg =~ /^(Verbindung authorisiert|checkpoint starting):/) {
+			$key = $1;
 
-	# checkpoint complete: wrote 0 buffers (0.0%); 0 transaction log file(s) added, 0 removed, 0 recycled; write=0.000 s, sync=0.000 s, total=0.008 s
-	} elsif ($msg =~ /^checkpoint complete: .* total=([\d.]+) s/) {
-		$time = $1;
-		$key =~ s/[\d.]+/?/g; # eat all numbers
-		$msg =~ s/[\d.]+(%| s)/?$1/g; # eat percentages and times
-		$msg =~ s/[1-9][\d.]*/N/g; # eat non-zero numbers
+		} elsif ($msg =~ /^(Verbindungsende):/) {
+			$key = $1;
+			$msg =~ s/ Sitzungszeit: \S+//;
+			$msg =~ s/ port=\S+//;
 
-	} else {
-		print STDERR "Could not parse line $.: $type:  $msg\n";
-		return;
+		} elsif ($msg =~ /^(unvollst..?ndiges Startpaket|konnte Daten vom Client nicht empfangen|unerwartetes EOF auf Client-Verbindung)/) {
+
+		# checkpoint complete: wrote 0 buffers (0.0%); 0 transaction log file(s) added, 0 removed, 0 recycled; write=0.000 s, sync=0.000 s, total=0.008 s
+		} elsif ($msg =~ /^checkpoint complete: .* total=([\d.]+) s/) {
+			$time = $1;
+			$key =~ s/[\d.]+/?/g; # eat all numbers
+			$msg =~ s/[\d.]+(%| s)/?$1/g; # eat percentages and times
+			$msg =~ s/[1-9][\d.]*/N/g; # eat non-zero numbers
+
+		} elsif ($msg =~ /^Prozess \d+ (erlangte|wartet)/) {
+			if ($msg =~ /([\d.,]+) ms/) {
+				$time = $1;
+				$time =~ s/,/./;
+				$time /= 1000.0;
+				$msg =~ s/[\d.,]+ ms/... ms/;
+			}
+			$key = $msg;
+			$key =~ s/(Prozess|Transaktion) \d+/$1 .../g;
+
+		} elsif ($msg =~ /^(pam_authenticate fehlgeschlagen|konnte Daten nicht an den Client senden)/) {
+
+		} else {
+			print STDERR "Could not parse line $.: $type:  $msg\n";
+		}
+
+	} elsif ($type =~ /FATAL|FEHLER|WARNING|WARNUNG/) {
+		$key =~ s/bei Zeichen \d+/bei Zeichen .../;
+		$msg = $key;
+		$key =~ s/».*?«/»...«/g;
+		$key =~ s/>>.*?<</>>...<</g;
 	}
 
+	$key =~ s/\s+/ /g;
+	$key = substr ($key, 0, $keylen);
 	$statement{$key}->{type} = $type;
 	$statement{$key}->{n}++;
 	$statement{$key}->{total} += $time if ($time);
 	$statement{$key}->{examples}->{$msg}->{n}++;
 	push @{ $statement{$key}->{examples}->{$msg}->{msg} }, $line;
-	$last = $key;
+	$lastkey = $key;
+	$lastmsg = $msg;
 }
 
-while (<>) {
-	chomp;
-	if (/(.*?) (LOG):  (.*)/) {
-		parse ($_, $2, $3);
-	} elsif (/(.*?) (FEHLER):  (.*)/) {
-		$last = $3;
-		$statement{$3}->{type} = $2;
-		$statement{$3}->{n}++;
-	} elsif (/(.*?) (ANWEISUNG):  (.*)/) {
-		my ($msg, $key) = ($3, $3);
-		$key =~ s/(values\s*)(\(.*\))/$1 . eat_ticks($2)/ei;
-		$statement{$last}->{examples}->{$key}->{n}++;
-		push @{ $statement{$last}->{examples}->{$key}->{msg} }, $_;
+sub parse0 ($)
+{
+	my $line = shift;
+	if ($line =~ /(.*?) (LOG|FATAL|FEHLER|WARNING|WARNUNG):  (.*)/s) {
+		parse ($line, $2, $3);
+	} elsif ($line =~ /(.*?) (ANWEISUNG|TIPP):  (.*)/s and $lastkey) { # query attached to an error message
+		my $msglist = $statement{$lastkey}->{examples}->{$lastmsg}->{msg};
+		@{$msglist}[@$msglist - 1] .= "\n$line";
 	} else {
-		print STDERR "Could not parse line $.: " . substr ($_, 0, 200) . "\n";
+		print STDERR "Could not parse line $.: " . substr ($line, 0, $substrlen) . "\n";
 	}
 }
 
-delete $statement{''}; # undefined $last
+# input
+
+my $current;
+while (<>) {
+	chomp;
+	if (/^\S/) { # new log entry
+		if (defined $current) {
+			parse0 ($current);
+		}
+		$current = $_;
+	} elsif (/\s/ and $current) { # continued entry
+		$current .= "\n$_";
+	} else { # continued entry with missing start
+		print STDERR "Line $.: continued entry with missing start: $_\n";
+	}
+}
+if (defined $current) {
+	parse0 ($current);
+}
+
+# output
 
 foreach my $s (keys %statement) {
 	$statement{$s}->{total} ||= 0;
 	$statement{$s}->{avg} = $statement{$s}->{total} / $statement{$s}->{n};
 }
 
-my $i = 1;
+print "<table style=\"vertical-align:top;\">\n";
+print "<tr><th>#</th><th>total</th><th>avg</th><th>query</th></tr>\n";
 foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
 		      $statement{$b}->{$key2} <=> $statement{$a}->{$key2} } keys %statement) {
-	printf "%d: %d times%s\n    %s: %s\n",
-		$i++,
+	printf "<tr><td>%d</td><td>%s</td><td>%s</td><td>%s: <b>%s</b></td></tr>\n",
 		$statement{$s}->{n},
-		($statement{$s}->{total} ? sprintf (", %s total, %s avg", fmt ($statement{$s}->{total}), fmt ($statement{$s}->{avg})) : ''),
+		($statement{$s}->{total} ? fmt_t ($statement{$s}->{total}) : ''),
+		($statement{$s}->{avg} ? fmt_t ($statement{$s}->{avg}) : ''),
 		$statement{$s}->{type},
-		$s;
+		fmt_s ($s);
 
 	my $s_ex = $statement{$s}->{examples};
+	my $j;
 	foreach my $ex (sort { $s_ex->{$b}->{n} <=> $s_ex->{$a}->{n} } keys %$s_ex) {
-		printf "        %d times: %s\n",
+		printf "<tr><td colspan=3></td><td>        %d times: %s</td></tr>\n",
 			$s_ex->{$ex}->{n},
-			substr ($ex, 0, 200);
-		if ($examples) {
-			my $j;
+			fmt_s ($ex);
+		if ($examples2) {
+			my $k;
 			foreach my $msg (@{ $s_ex->{$ex}->{msg} }) {
-				printf "            %s\n",
-					substr ($msg, 0, 200);
-				last if (++$j >= $examples);
+				printf "<tr><td colspan=3></td><td>&nbsp;&nbsp;&nbsp;%s\n</td></tr>",
+					fmt_s ($msg);
+				last if (++$k >= $examples2);
 			}
 		}
+		last if (++$j >= $examples1);
 	}
 }
+print "</table>\n";
