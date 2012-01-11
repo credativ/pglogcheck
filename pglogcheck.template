@@ -1,0 +1,50 @@
+<script src="sorttable.js"></script>
+<script type="text/javascript" language="JavaScript">
+	function objectOver(x) {
+		x.style.color="blue";
+	}
+function objectOut(x) {
+	x.style.color="black";
+}
+function expand (x){
+	var id=document.getElementById("id_"+x) ;
+	id.style.display="block";
+	var id=document.getElementById("show_"+x) ;
+	id.style.display="none";
+}
+</script>
+
+<table class="sortable" style="vertical-align:top;">
+<tr><th>#</th><th>total</th><th>avg</th><th>query</th></tr>
+
+[% FOREACH r = rows %]
+<tr>
+	<td valign="top">[%r.count%]</td>
+	<td valign="top" sorttable_customkey="[%r.total_raw%]">[%r.total%]</td>
+	<td valign="top" sorttable_customkey="[%r.avg_raw%]">[%r.avg%]</td>
+	<td>[%r.type%]: <b>[%r.query%]</b>
+		[% IF r.example_rows %]
+		<span id="show_[%r.id%]" style="font-size:small;" onclick='javascript:expand([%r.id%])'><br />Click to show queries</span>
+		<table class="sortable" id="id_[%r.id%]" style="display:none; vertical-align:top;">
+			<tr><th>#</th><th>query</th></tr>
+			[% FOREACH ex = r.example_rows %]
+			<tr>
+				<td valign="top">[%ex.count%]</td>
+				<td>[%ex.example%]
+					[% IF ex.example_msgs %]
+					<span id="show_[%ex.id%]" style="font-size:small;" onclick='javascript:expand([%ex.id%])'><br />Click to show examples</span>
+					<ul id="id_[%ex.id%]" style="display:none;">
+						[% FOREACH msg = ex.example_msgs %]
+						<li>[%msg.msg%]</li>
+						[% END %]
+					</ul>
+					[% END %]
+				</td>
+			</tr>
+			[% END %]
+		</table>
+		[% END %]
+	</td>
+</tr>
+[% END %]
+</table>

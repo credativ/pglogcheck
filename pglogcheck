@@ -2,8 +2,10 @@
 
 use strict;
 use warnings;
+use File::Basename;
 use Getopt::Long;
 Getopt::Long::Configure ("bundling");
+use Template;
 
 my ($key1, $key2) = qw(total n);
 my $examples1 = 10;
@@ -142,9 +144,9 @@ sub parse ($$$)
 	$key =~ s/\s+/ /g;
 	$key = substr ($key, 0, $keylen);
 	$statement{$key}->{type} = $type;
-	$statement{$key}->{n}++;
+	$statement{$key}->{count}++;
 	$statement{$key}->{total} += $time if ($time);
-	$statement{$key}->{examples}->{$msg}->{n}++;
+	$statement{$key}->{examples}->{$msg}->{count}++;
 	push @{ $statement{$key}->{examples}->{$msg}->{msg} }, $line;
 	$lastkey = $key;
 	$lastmsg = $msg;
@@ -183,39 +185,64 @@ if (defined $current) {
 	parse0 ($current);
 }
 
-# output
+# processing
 
 foreach my $s (keys %statement) {
 	$statement{$s}->{total} ||= 0;
-	$statement{$s}->{avg} = $statement{$s}->{total} / $statement{$s}->{n};
+	$statement{$s}->{avg} = $statement{$s}->{total} / $statement{$s}->{count};
 }
 
-print "<table style=\"vertical-align:top;\">\n";
-print "<tr><th>#</th><th>total</th><th>avg</th><th>query</th></tr>\n";
+
+# output
+
+my $template = Template->new (
+	INCLUDEPATH => [ dirname ($0), '/usr/share/pglogcheck' ],
+);
+my %vars;
+
+my $id = 1;
 foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
 		      $statement{$b}->{$key2} <=> $statement{$a}->{$key2} } keys %statement) {
-	printf "<tr><td>%d</td><td>%s</td><td>%s</td><td>%s: <b>%s</b></td></tr>\n",
-		$statement{$s}->{n},
-		($statement{$s}->{total} ? fmt_t ($statement{$s}->{total}) : ''),
-		($statement{$s}->{avg} ? fmt_t ($statement{$s}->{avg}) : ''),
-		$statement{$s}->{type},
-		fmt_s ($s);
+	my $s_h = $statement{$s};
 
-	my $s_ex = $statement{$s}->{examples};
+	my $row = {
+		count => $s_h->{count},
+		total => fmt_t ($s_h->{total}),
+		total_raw => $s_h->{total},
+		avg => fmt_t ($s_h->{avg}),
+		avg_raw => $s_h->{avg},
+		type => $s_h->{type},
+		query => fmt_s ($s),
+		example_row_count => 0,
+		id => $id++,
+	};
+
+	my $s_ex = $s_h->{examples};
 	my $j;
-	foreach my $ex (sort { $s_ex->{$b}->{n} <=> $s_ex->{$a}->{n} } keys %$s_ex) {
-		printf "<tr><td colspan=3></td><td>        %d times: %s</td></tr>\n",
-			$s_ex->{$ex}->{n},
-			fmt_s ($ex);
+	foreach my $ex (sort { $s_ex->{$b}->{count} <=> $s_ex->{$a}->{count} } keys %$s_ex) {
+		my $ex_h = $s_ex->{$ex};
+		my $ex_row = {
+			count => $ex_h->{count},
+			example => fmt_s ($ex),
+			id => $id++,
+		};
+
 		if ($examples2) {
 			my $k;
-			foreach my $msg (@{ $s_ex->{$ex}->{msg} }) {
-				printf "<tr><td colspan=3></td><td>&nbsp;&nbsp;&nbsp;%s\n</td></tr>",
-					fmt_s ($msg);
+			my $ex2_row;
+			foreach my $msg (@{ $ex_h->{msg} }) {
+				push @{$ex_row->{example_msgs}}, {
+					msg => fmt_s ($msg),
+					id => $id++,
+				};
 				last if (++$k >= $examples2);
 			}
 		}
+		push @{$row->{example_rows}}, $ex_row;
+		$row->{example_row_count}++;
 		last if (++$j >= $examples1);
 	}
+	push @{$vars{rows}}, $row;
 }
-print "</table>\n";
+
+$template->process('pglogcheck.template', \%vars) || die $template->error();
