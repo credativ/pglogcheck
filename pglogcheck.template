@@ -1,18 +1,47 @@
+<html>
+<head>
+<title>pglogcheck results</title>
+
+<style>
+.expando {
+	font-size:small;
+	font-style:italic;
+	color:gray;
+}
+</style>
+
 <script src="sorttable.js"></script>
+
 <script type="text/javascript" language="JavaScript">
-	function objectOver(x) {
-		x.style.color="blue";
-	}
+function objectOver(x) {
+	x.style.color="blue";
+}
 function objectOut(x) {
 	x.style.color="black";
 }
 function expand (x){
-	var id=document.getElementById("id_"+x) ;
+	var id=document.getElementById("coll_"+x) ;
 	id.style.display="block";
-	var id=document.getElementById("show_"+x) ;
+	var id=document.getElementById("exp_"+x) ;
 	id.style.display="none";
 }
+function collapse (x){
+	var id=document.getElementById("coll_"+x) ;
+	id.style.display="none";
+	var id=document.getElementById("exp_"+x) ;
+	id.style.display="block";
+}
 </script>
+
+</head>
+<body>
+
+<h1>pglogcheck results</h1>
+
+<p>
+[%lines%] lines parsed, [%type.LOG%] LOG, [%type.WARNING%] WARNING, [%type.FATAL%] FATAL messages. <br />
+[%total%] total runtime, [%connections%] authorized connections, [%checkpoints%] checkpoints.
+</p>
 
 <table class="sortable" style="vertical-align:top;">
 <tr><th>#</th><th>total</th><th>avg</th><th>query</th></tr>
@@ -24,27 +53,42 @@ function expand (x){
 	<td valign="top" sorttable_customkey="[%r.avg_raw%]">[%r.avg%]</td>
 	<td>[%r.type%]: <b>[%r.query%]</b>
 		[% IF r.example_rows %]
-		<span id="show_[%r.id%]" style="font-size:small;" onclick='javascript:expand([%r.id%])'><br />Click to show queries</span>
-		<table class="sortable" id="id_[%r.id%]" style="display:none; vertical-align:top;">
-			<tr><th>#</th><th>query</th></tr>
-			[% FOREACH ex = r.example_rows %]
-			<tr>
-				<td valign="top">[%ex.count%]</td>
-				<td>[%ex.example%]
-					[% IF ex.example_msgs %]
-					<span id="show_[%ex.id%]" style="font-size:small;" onclick='javascript:expand([%ex.id%])'><br />Click to show examples</span>
-					<ul id="id_[%ex.id%]" style="display:none;">
-						[% FOREACH msg = ex.example_msgs %]
-						<li>[%msg.msg%]</li>
+		<br />
+		<span id="exp_[%r.id%]" class="expando" onclick='javascript:expand([%r.id%])'>
+			Click to show queries ([%r.example_row_count%])
+		</span>
+		<span id="coll_[%r.id%]" style="display:none;">
+			<span class="expando" onclick='javascript:collapse([%r.id%])'>Click to hide queries</span>
+			<table class="sortable" style="vertical-align:top;">
+				<tr><th>#</th><th>query</th></tr>
+				[% FOREACH ex = r.example_rows %]
+				<tr>
+					<td valign="top">[%ex.count%]</td>
+					<td>[%ex.example%]
+						[% IF ex.example_msgs %]
+						<br />
+						<span id="exp_[%ex.id%]" class="expando" onclick='javascript:expand([%ex.id%])'>
+							Click to show examples ([%ex.msg_row_count%])
+						</span>
+						<span id="coll_[%ex.id%]" style="display:none;">
+							<span class="expando" onclick='javascript:collapse([%ex.id%])'>Click to hide examples</span>
+							<ul>
+								[% FOREACH msg = ex.example_msgs %]
+								<li>[%msg.msg%]</li>
+								[% END %]
+							</ul>
+						</span>
 						[% END %]
-					</ul>
-					[% END %]
-				</td>
-			</tr>
-			[% END %]
-		</table>
+					</td>
+				</tr>
+				[% END %]
+			</table>
+		</span>
 		[% END %]
 	</td>
 </tr>
 [% END %]
 </table>
+
+</body>
+</html>

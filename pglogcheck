@@ -13,10 +13,24 @@ my $examples2 = 0;
 my $keylen = 300;
 my $substrlen = 1500;
 
+my %vars = (
+	lines => 0,
+	type => {
+		LOG => 0,
+		WARNING => 0,
+		FATAL => 0,
+	},
+	total_raw => 0.0,
+	connections => 0,
+	checkpoints => 0,
+);
+
 GetOptions (
+	# default sort order
 	"avg|average|a" => sub { ($key1, $key2) = qw(avg n) },
 	"count|c" => sub { ($key1, $key2) = qw(n total) },
 	"total|t" => sub { ($key1, $key2) = qw(total n) },
+	# number of example log lines
 	"examples|e:10" => \$examples2,
 );
 
@@ -87,6 +101,7 @@ sub parse ($$$)
 	my $time;
 
 	if ($type eq 'LOG') {
+		$vars{type}->{LOG}++;
 		if ($msg =~ /^Dauer: ([\d.]+) ms  Anweisung: (.*)/s) {
 			($time, $key, $msg) = ($1 / 1000.0, eat_values ($2), eat_ticks ($2));
 
@@ -101,8 +116,9 @@ sub parse ($$$)
 			$key = $1;
 			$msg =~ s/ port=\S+//;
 
-		} elsif ($msg =~ /^(Verbindung authorisiert|checkpoint starting):/) {
+		} elsif ($msg =~ /^(Verbindung authorisiert):/) {
 			$key = $1;
+			$vars{connections}++;
 
 		} elsif ($msg =~ /^(Verbindungsende):/) {
 			$key = $1;
@@ -110,6 +126,10 @@ sub parse ($$$)
 			$msg =~ s/ port=\S+//;
 
 		} elsif ($msg =~ /^(unvollst..?ndiges Startpaket|konnte Daten vom Client nicht empfangen|unerwartetes EOF auf Client-Verbindung)/) {
+
+		} elsif ($msg =~ /^(checkpoint starting):/) {
+			$key = $1;
+			$vars{checkpoints}++;
 
 		# checkpoint complete: wrote 0 buffers (0.0%); 0 transaction log file(s) added, 0 removed, 0 recycled; write=0.000 s, sync=0.000 s, total=0.008 s
 		} elsif ($msg =~ /^checkpoint complete: .* total=([\d.]+) s/) {
@@ -135,6 +155,7 @@ sub parse ($$$)
 		}
 
 	} elsif ($type =~ /FATAL|FEHLER|WARNING|WARNUNG/) {
+		$vars{type}->{$type =~ /^F/ ? 'FATAL' : 'WARNING'}++;
 		$key =~ s/bei Zeichen \d+/bei Zeichen .../;
 		$msg = $key;
 		$key =~ s/».*?«/»...«/g;
@@ -145,7 +166,10 @@ sub parse ($$$)
 	$key = substr ($key, 0, $keylen);
 	$statement{$key}->{type} = $type;
 	$statement{$key}->{count}++;
-	$statement{$key}->{total} += $time if ($time);
+	if ($time) {
+		$vars{total_raw} += $time;
+		$statement{$key}->{total} += $time;
+	}
 	$statement{$key}->{examples}->{$msg}->{count}++;
 	push @{ $statement{$key}->{examples}->{$msg}->{msg} }, $line;
 	$lastkey = $key;
@@ -170,6 +194,7 @@ sub parse0 ($)
 my $current;
 while (<>) {
 	chomp;
+	$vars{lines}++;
 	if (/^\S/) { # new log entry
 		if (defined $current) {
 			parse0 ($current);
@@ -187,6 +212,8 @@ if (defined $current) {
 
 # processing
 
+$vars{total} = fmt_t ($vars{total_raw});
+
 foreach my $s (keys %statement) {
 	$statement{$s}->{total} ||= 0;
 	$statement{$s}->{avg} = $statement{$s}->{total} / $statement{$s}->{count};
@@ -198,7 +225,6 @@ foreach my $s (keys %statement) {
 my $template = Template->new (
 	INCLUDEPATH => [ dirname ($0), '/usr/share/pglogcheck' ],
 );
-my %vars;
 
 my $id = 1;
 foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
@@ -224,17 +250,18 @@ foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
 		my $ex_row = {
 			count => $ex_h->{count},
 			example => fmt_s ($ex),
+			msg_row_count => 0,
 			id => $id++,
 		};
 
 		if ($examples2) {
 			my $k;
-			my $ex2_row;
 			foreach my $msg (@{ $ex_h->{msg} }) {
 				push @{$ex_row->{example_msgs}}, {
 					msg => fmt_s ($msg),
 					id => $id++,
 				};
+				$ex_row->{msg_row_count}++;
 				last if (++$k >= $examples2);
 			}
 		}
