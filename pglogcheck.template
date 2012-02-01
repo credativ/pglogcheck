@@ -9,7 +9,12 @@
 	font-style:italic;
 	color:gray;
 }
+.LOG {
+}
 .ERROR {
+	color:red;
+}
+.FEHLER {
 	color:red;
 }
 </style>
@@ -37,18 +42,47 @@ function collapse (x){
 }
 </script>
 
+<script type="text/javascript">
+// http://snippets.dzone.com/posts/show/3737
+function toggleclass (c)
+{
+	if (!document.styleSheets) return;
+	var thecss = new Array();
+	if (document.styleSheets[0].cssRules) { // Standards Compliant
+		thecss = document.styleSheets[0].cssRules;
+	} else {
+		thecss = document.styleSheets[0].rules; // IE
+	}
+	for (i=0; i<thecss.length; i++) {
+		if (thecss[i].selectorText == c) {
+			if (thecss[i].style.cssText.match (/display: *none;/)) {
+				thecss[i].style.cssText = thecss[i].style.cssText.replace (/display: *none;/, '');
+			} else {
+				thecss[i].style.cssText += 'display:none;';
+			}
+		}
+	}
+}
+</script>
+
 </head>
 <body>
 
 <h1>pglogcheck results</h1>
 
 <p>
-[%lines%] lines parsed,
+<table class="sortable" border="1">
+<thead><tr><th>Type</th><th>#</th><th>total</th></tr></thead>
+<tfoot><tr><td></td><td>[%msgs%]</td><td>[%total%]</td></tr></tfoot>
 [% FOREACH t = type %]
-[%t.count%] [%t.type%],
+<tr>
+	<td><span onclick='javascript:toggleclass(".[%t.type%]")'>[%t.type%]</span></td>
+	<td>[%t.count%]</td>
+	<td>[%t.total%]</td>
+</tr>
 [% END %]
-[%msgs%] in total. <br />
-[%total%] total runtime, [%connections%] authorized connections, [%checkpoints%] checkpoints.
+</table>
+[%lines%] lines parsed, [%connections%] authorized connections, [%checkpoints%] checkpoints.
 </p>
 
 <table class="sortable" style="vertical-align:top;">
