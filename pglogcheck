@@ -22,6 +22,11 @@ my %vars = (
 	checkpoints => 0,
 );
 
+my %localtypemap = (
+	WARNUNG => 'WARNING',
+	FEHLER => 'ERROR',
+);
+
 GetOptions (
 	# default sort order
 	"avg|average|a" => sub { ($key1, $key2) = qw(avg count) },
@@ -96,8 +101,9 @@ sub eat_ticks ($)
 my ($lastkey, $lastmsg);
 sub parse ($$$)
 {
-	my ($line, $type, $msg) = @_;
+	my ($line, $localtype, $msg) = @_;
 	#print STDERR "Parsing $line\n  $type\n  $msg\n";
+	my $type = $localtypemap{$localtype} || $localtype; # english type name
 	my $key = $msg;
 	my $time;
 
@@ -156,22 +162,23 @@ sub parse ($$$)
 		} elsif ($msg =~ /^(pam_authenticate fehlgeschlagen|konnte Daten nicht an den Client senden)/) {
 
 		} else {
-			print STDERR "Could not parse line $.: $type:  " . substr ($msg, 0, $substrlen) . "\n";
+			print STDERR "Could not parse line $.: $localtype:  " . substr ($msg, 0, $substrlen) . "\n";
 		}
 
-	} elsif ($type =~ /FATAL|ERROR|FEHLER|WARNING|WARNUNG/) {
+	} elsif ($type =~ /FATAL|ERROR|WARNING/) {
 		#$vars{type}->{$type =~ /^F/ ? 'FATAL' : 'WARNING'}++; #XXX
 		$key =~ s/bei Zeichen \d+/bei Zeichen .../;
 		$msg = $key;
 		$key =~ s/».*?«/»...«/g;
 		$key =~ s/>>.*?<</>>...<</g;
 	} else {
-		print STDERR "Unknown statement type $type in line $.: $type:  " . substr ($msg, 0, $substrlen) . "\n";
+		print STDERR "Unknown statement type $localtype in line $.: $localtype:  " . substr ($msg, 0, $substrlen) . "\n";
 	}
 
 	$key =~ s/\s+/ /g;
 	$key = substr ($key, 0, $keylen);
 	$statement{$key}->{type} = $type;
+	$statement{$key}->{localtype} = $localtype;
 	$statement{$key}->{count}++;
 	$type{$type}->{count}++;
 	if ($time) {
@@ -258,6 +265,7 @@ foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
 		avg => fmt_t ($s_h->{avg}),
 		avg_raw => $s_h->{avg},
 		type => $s_h->{type},
+		localtype => $s_h->{localtype},
 		query => fmt_s ($s),
 		example_row_count => 0,
 		id => $id++,

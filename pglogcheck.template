@@ -11,10 +11,13 @@
 }
 .LOG {
 }
+.WARNING {
+	color:red;
+}
 .ERROR {
 	color:red;
 }
-.FEHLER {
+.FATAL {
 	color:red;
 }
 </style>
@@ -54,11 +57,15 @@ function toggleclass (c)
 		thecss = document.styleSheets[0].rules; // IE
 	}
 	for (i=0; i<thecss.length; i++) {
-		if (thecss[i].selectorText == c) {
+		if (thecss[i].selectorText == "."+c) {
 			if (thecss[i].style.cssText.match (/display: *none;/)) {
 				thecss[i].style.cssText = thecss[i].style.cssText.replace (/display: *none;/, '');
+				var id=document.getElementById(c+"_title") ;
+				id.style.textDecoration="none";
 			} else {
 				thecss[i].style.cssText += 'display:none;';
+				var id=document.getElementById(c+"_title") ;
+				id.style.textDecoration="line-through";
 			}
 		}
 	}
@@ -76,7 +83,7 @@ function toggleclass (c)
 <tfoot><tr><td></td><td>[%msgs%]</td><td>[%total%]</td></tr></tfoot>
 [% FOREACH t = type %]
 <tr>
-	<td><span onclick='javascript:toggleclass(".[%t.type%]")'>[%t.type%]</span></td>
+	<td><span onclick='javascript:toggleclass("[%t.type%]")' id="[%t.type%]_title">[%t.type%]</span></td>
 	<td>[%t.count%]</td>
 	<td>[%t.total%]</td>
 </tr>
@@ -93,7 +100,7 @@ function toggleclass (c)
 	<td valign="top">[%r.count%]</td>
 	<td valign="top" sorttable_customkey="[%r.total_raw%]">[%r.total%]</td>
 	<td valign="top" sorttable_customkey="[%r.avg_raw%]">[%r.avg%]</td>
-	<td>[%r.type%]: <b>[%r.query%]</b>
+	<td>[%r.localtype%]: <b>[%r.query%]</b>
 		[% IF r.example_rows %]
 		<br />
 		<span id="exp_[%r.id%]" class="expando" onclick='javascript:expand([%r.id%])'>
