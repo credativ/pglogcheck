@@ -1,0 +1,2 @@
+2012-03-11 14:44:26 CET [20087]: [1-1] FEHLER:  storniere Autovacuum-Aufgabe
+2012-03-11 14:44:26 CET [20087]: [2-1] ZUSAMMENHANG:  automatisches Vacuum der Tabelle »postgres.public.log«
