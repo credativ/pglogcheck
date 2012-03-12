@@ -1,0 +1,27 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my %params;
+my $queries = '';
+
+while (<>) {
+	if (/DETAIL:  ?Parameter:/) {
+		my @matches = /\$\d+ = '.*?'/g;
+		foreach my $match (@matches) {
+			$match =~ /\$(\d+) = ('.*?')/g;
+			$params{$1} = $2;
+		}
+
+		$queries =~ s/\$(\d+)/$params{$1} || 'NULL'/eg;
+		print $queries;
+		$queries = '';
+		%params = ();
+	} else {
+		$queries .= $_;
+	}
+}
+
+$queries =~ s/\$(\d+)/$params{$1} || 'NULL'/eg;
+print $queries;
