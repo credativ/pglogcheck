@@ -12,6 +12,7 @@ my $examples1 = 10;
 my $examples2 = 3;
 my $keylen = 300;
 my $substrlen = 1500;
+my $errorlen = 500;
 
 my %vars = (
 	lines => 0,
@@ -67,6 +68,16 @@ sub fmt_s ($)
 	return substr ($str, 0, $substrlen);
 }
 
+sub fmt_error ($)
+{
+	my $str = shift;
+	if (length ($str) > $errorlen) {
+		return substr ($str, 0, $errorlen) . " ...";
+	} else {
+		return $str;
+	}
+}
+
 sub dots ($)
 {
 	my $str = shift;
@@ -88,6 +99,7 @@ sub eat_values ($)
 	$msg =~ s/(\bIN\s*\()(.*?)\)/$1...)/ig;
 	$msg =~ s/(\bVALUES\s*\()(.*)\)/$1 . eat_strings ($2) . ')'/ieg;
 	$msg =~ s/'(.*?)'/"'" . dots ($1) . "'"/egs;
+	$msg =~ s/(SELECT )(.{100}).+?( FROM )/$1$2 ... $3/i;
 	return $msg;
 }
 
@@ -95,13 +107,14 @@ sub eat_ticks ($)
 {
 	my $msg = shift;
 	$msg =~ s/'(.*?)'/"'" . dots ($1) . "'"/egs;
+	$msg =~ s/(SELECT )(.{100}).+?( FROM )/$1$2 ... $3/i;
 	return $msg;
 }
 
 my ($lastkey, $lastmsg);
-sub parse ($$$)
+sub parse ($$$$)
 {
-	my ($line, $localtype, $msg) = @_;
+	my ($line, $lineno, $localtype, $msg) = @_;
 	#print STDERR "Parsing $line\n  $type\n  $msg\n";
 	my $type = $localtypemap{$localtype} || $localtype; # english type name
 	my $key = $msg;
@@ -113,12 +126,19 @@ sub parse ($$$)
 			($time, $key, $msg) = ($1 / 1000.0, eat_values ($2), eat_ticks ($2));
 
 		# log_min_duration_statement, prepared statement
-		} elsif ($msg =~ /^(?:duration|Dauer): ([\d.]+) ms  (Ausführen|Parsen) (.*): (.*)/s) {
+		} elsif ($msg =~ /^(?:duration|Dauer): ([\d.]+) ms  (Parsen|Binden|Ausf..?hren) (.*): (.*)/s) {
 			my ($cmd, $name, $query);
 			($time, $cmd, $name, $query) = ($1 / 1000.0, $2, $3, $4);
 			$name =~ s/\d/N/g;
 			$msg = "$cmd $name: $query";
-			$key = eat_ticks ($msg);
+			$key = eat_values ($msg);
+
+		# log_statement = 'all', prepared statement
+		} elsif ($msg =~ /^(Parsen|Binden|Ausf..?hren) (.*): (.*)/s) {
+			my ($cmd, $name, $query) = ($1, $2, $3);
+			$name =~ s/\d/N/g;
+			$msg = "$cmd $name: $query";
+			$key = eat_values ($msg);
 
 		# auto_explain output with query inline
 		} elsif ($msg =~ /^duration: ([\d.]+) ms  plan:\nQuery Text: (.*)/) {
@@ -157,6 +177,16 @@ sub parse ($$$)
 			$key = $1;
 			$vars{autovacuum}++; #XXX
 
+		# automatisches Vacuum von Tabelle »postgres.public.log«: Index-Scans: 1
+		#         Pages: 0 entfernt, 1236583 noch vorhanden
+		#         Tuple: 750 entfernt, 28942414 noch vorhanden
+		#         Systembenutzung: CPU 0.82s/0.92u sec elapsed 3257.34 sec
+		} elsif ($msg =~ /^(automatisches Vacuum von Tabelle »\S+«)/) {
+			$key = $1;
+			if ($msg =~ /elapsed ([\d.]+) s/) {
+				$time = $1;
+			}
+
 		} elsif ($msg =~ /^Prozess \d+ (erlangte|wartet)/) {
 			if ($msg =~ /([\d.,]+) ms/) {
 				$time = $1;
@@ -167,12 +197,16 @@ sub parse ($$$)
 			$key = $msg;
 			$key =~ s/(Prozess|Transaktion) \d+/$1 .../g;
 
-		} elsif ($msg =~ /^(incomplete startup packet|unvollst..?ndiges Startpaket|could not receive data from client|konnte Daten vom Client nicht empfangen|unexpected EOF on client connection|unerwartetes EOF auf Client-Verbindung)/) {
+		# temporäre Datei: Pfad »base/pgsql_tmp/pgsql_tmp25529.0«, Größe 57974784
+		} elsif ($msg =~ /^(temporäre Datei): Pfad »(\S+)«, Größe \d+/) {
+			$key = $1;
+
+		} elsif ($msg =~ /^(incomplete startup packet|unvollst..?ndiges Startpaket|could not receive data from client|konnte Daten vom Client nicht empfangen|unexpected EOF on client connection|unerwartetes EOF auf Client-Verbindung|SIGHUP empfangen, Konfigurationsdateien werden neu geladen)/) {
 
 		} elsif ($msg =~ /^(pam_authenticate fehlgeschlagen|konnte Daten nicht an den Client senden)/) {
 
 		} else {
-			print STDERR "Could not parse line $.: $localtype:  " . substr ($msg, 0, $substrlen) . "\n";
+			print STDERR "Could not parse line $.: $localtype:  " . fmt_error ($msg) . "\n";
 		}
 
 	} elsif ($type =~ /FATAL|ERROR|WARNING/) {
@@ -182,7 +216,7 @@ sub parse ($$$)
 		$key =~ s/».*?«/»...«/g;
 		$key =~ s/>>.*?<</>>...<</g;
 	} else {
-		print STDERR "Unknown statement type $localtype in line $.: $localtype:  " . substr ($msg, 0, $substrlen) . "\n";
+		print STDERR "Unknown statement type $localtype in line $.: $localtype:  " . fmt_error ($msg) . "\n";
 	}
 
 	$key =~ s/\s+/ /g;
@@ -197,43 +231,47 @@ sub parse ($$$)
 		$type{$type}->{total_raw} += $time;
 	}
 	$statement{$key}->{examples}->{$msg}->{count}++;
-	push @{ $statement{$key}->{examples}->{$msg}->{msg} }, $line;
+	push @{ $statement{$key}->{examples}->{$msg}->{msg} }, {
+		msg => $line,
+		msglineno => $lineno,
+	};
 	$lastkey = $key;
 	$lastmsg = $msg;
 }
 
-sub parse0 ($)
+sub parse0 ($$)
 {
-	my $line = shift;
+	my ($line, $lineno) = @_;
 	if ($line =~ /(.*?) (LOG|ERROR|FATAL|FEHLER|WARNING|WARNUNG):  (.*)/s) {
-		parse ($line, $2, $3);
-	} elsif ($line =~ /(.*?) (ANWEISUNG|HINT|TIPP):  (.*)/s and $lastkey) { # query attached to an error message
+		parse ($line, $lineno, $2, $3);
+	} elsif ($line =~ /(.*?) (ANWEISUNG|HINT|TIPP|DETAIL|ZUSAMMENHANG):  (.*)/s and $lastkey) { # query attached to an error message
 		my $msglist = $statement{$lastkey}->{examples}->{$lastmsg}->{msg};
-		@{$msglist}[@$msglist - 1] .= "\n$line";
+		@{$msglist}[@$msglist - 1]->{msg} .= "\n$line";
 	} else {
-		print STDERR "Could not parse line $.: " . substr ($line, 0, $substrlen) . "\n";
+		print STDERR "Could not parse line $.: " . fmt_error ($line) . "\n";
 	}
 }
 
 # input
 
-my $current;
+my ($current, $lineno);
 while (<>) {
 	chomp;
 	$vars{lines}++;
 	if (/^\S/) { # new log entry
 		if (defined $current) {
-			parse0 ($current);
+			parse0 ($current, $lineno);
 		}
 		$current = $_;
+		$lineno = $.;
 	} elsif (/\s/ and $current) { # continued entry
 		$current .= "\n$_";
 	} else { # continued entry with missing start
-		print STDERR "Line $.: continued entry with missing start: $_\n";
+		print STDERR "Line $.: continued entry with missing start: " . fmt_error ($_) . "\n";
 	}
 }
 if (defined $current) {
-	parse0 ($current);
+	parse0 ($current, $lineno);
 }
 
 # processing
@@ -296,7 +334,8 @@ foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
 			my $k;
 			foreach my $msg (@{ $ex_h->{msg} }) {
 				push @{$ex_row->{example_msgs}}, {
-					msg => fmt_s ($msg),
+					msg => fmt_s ($msg->{msg}),
+					lineno => $msg->{msglineno},
 					id => $id++,
 				};
 				$ex_row->{msg_row_count}++;

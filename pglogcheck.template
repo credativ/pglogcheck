@@ -32,12 +32,16 @@ function objectOut(x) {
 	x.style.color="black";
 }
 function expand (x){
+	var id=document.getElementById("text_"+x) ;
+	id.style.display="block";
 	var id=document.getElementById("coll_"+x) ;
 	id.style.display="block";
 	var id=document.getElementById("exp_"+x) ;
 	id.style.display="none";
 }
 function collapse (x){
+	var id=document.getElementById("text_"+x) ;
+	id.style.display="none";
 	var id=document.getElementById("coll_"+x) ;
 	id.style.display="none";
 	var id=document.getElementById("exp_"+x) ;
@@ -100,39 +104,34 @@ function toggleclass (c)
 	<td valign="top">[%r.count%]</td>
 	<td valign="top" sorttable_customkey="[%r.total_raw%]">[%r.total%]</td>
 	<td valign="top" sorttable_customkey="[%r.avg_raw%]">[%r.avg%]</td>
-	<td>[%r.localtype%]: <b>[%r.query%]</b>
+	<td>
+		[%r.localtype%]: <b>[%r.query%]</b>
 		[% IF r.example_rows %]
 		<br />
-		<span id="exp_[%r.id%]" class="expando" onclick='javascript:expand([%r.id%])'>
-			Click to show queries ([%r.example_row_count%])
-		</span>
-		<span id="coll_[%r.id%]" style="display:none;">
-			<span class="expando" onclick='javascript:collapse([%r.id%])'>Click to hide queries</span>
-			<table class="sortable" style="vertical-align:top;">
-				<tr><th>#</th><th>query</th></tr>
-				[% FOREACH ex = r.example_rows %]
-				<tr>
-					<td valign="top">[%ex.count%]</td>
-					<td>[%ex.example%]
-						[% IF ex.example_msgs %]
-						<br />
-						<span id="exp_[%ex.id%]" class="expando" onclick='javascript:expand([%ex.id%])'>
-							Click to show examples ([%ex.msg_row_count%])
-						</span>
-						<span id="coll_[%ex.id%]" style="display:none;">
-							<span class="expando" onclick='javascript:collapse([%ex.id%])'>Click to hide examples</span>
-							<ul>
-								[% FOREACH msg = ex.example_msgs %]
-								<li>[%msg.msg%]</li>
-								[% END %]
-							</ul>
-						</span>
+		<span id="exp_[%r.id%]" class="expando" onclick='javascript:expand([%r.id%])'>⊞ [%r.example_row_count%]</span>
+		<span id="text_[%r.id%]" class="expando" onclick='javascript:collapse([%r.id%])' style="display:none;">⊟ [%r.example_row_count%]</span>
+		[% END %]
+		[% IF r.example_rows %]
+		<table id="coll_[%r.id%]" style="display:none;" class="sortable" style="vertical-align:top;">
+			<tr><th>#</th><th>query</th></tr>
+			[% FOREACH ex = r.example_rows %]
+			<tr>
+				<td valign="top">[%ex.count%]</td>
+				<td>[%ex.example%]
+					[% IF ex.example_msgs %]
+					<br />
+					<span id="exp_[%ex.id%]" class="expando" onclick='javascript:expand([%ex.id%])'>⊞ [%ex.msg_row_count%]</span>
+					<span id="coll_[%ex.id%]" style="display:none;" class="expando" onclick='javascript:collapse([%ex.id%])'>⊟ [%ex.msg_row_count%]</span>
+					<ul id="text_[%ex.id%]" style="display:none;">
+						[% FOREACH msg = ex.example_msgs %]
+						<li><i>Line [%msg.lineno%]:</i> [%msg.msg%]</li>
 						[% END %]
-					</td>
-				</tr>
-				[% END %]
-			</table>
-		</span>
+					</span>
+					[% END %]
+				</td>
+			</tr>
+			[% END %]
+		</table>
 		[% END %]
 	</td>
 </tr>
