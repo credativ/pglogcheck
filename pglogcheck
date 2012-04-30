@@ -23,6 +23,9 @@ my %vars = (
 	checkpoints => 0,
 );
 
+my @typesort = qw(FATAL ERROR WARNING LOG);
+my %typesort = map { $typesort[$_] => $_ } (0 .. $#typesort);
+
 my %localtypemap = (
 	WARNUNG => 'WARNING',
 	FEHLER => 'ERROR',
@@ -290,7 +293,7 @@ if (defined $current) {
 
 $vars{total} = fmt_t ($vars{total_raw});
 
-foreach my $t (keys %type) {
+foreach my $t (sort { $typesort{$a} <=> $typesort{$b} } keys %type) {
 	$type{$t}->{type} = $t;
 	$type{$t}->{total} = fmt_t ($type{$t}->{total_raw}) if ($type{$t}->{total_raw});
 	push @{$vars{type}}, $type{$t};

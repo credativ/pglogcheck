@@ -93,7 +93,7 @@ function toggleclass (c)
 </tr>
 [% END %]
 </table>
-[%lines%] lines parsed, [%connections%] authorized connections, [%checkpoints%] checkpoints.
+[%lines%] lines parsed, [%total%] run time, [%connections%] authorized connections, [%checkpoints%] checkpoints.
 </p>
 
 <table class="sortable" style="vertical-align:top;">
