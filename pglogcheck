@@ -269,24 +269,39 @@ sub parse0 ($$)
 
 # input
 
-my ($current, $lineno);
-while (<>) {
-	chomp;
-	$vars{lines}++;
-	if (/^\S/) { # new log entry
-		if (defined $current) {
-			parse0 ($current, $lineno);
+sub parse_file ()
+{
+	my ($current, $lineno);
+	while (<FILE>) {
+		chomp;
+		$vars{lines}++;
+		if (/^\S/) { # new log entry
+			if (defined $current) {
+				parse0 ($current, $lineno);
+			}
+			$current = $_;
+			$lineno = $.;
+		} elsif (/\s/ and $current) { # continued entry
+			$current .= "\n$_";
+		} else { # continued entry with missing start
+			print STDERR "Line $.: continued entry with missing start: " . fmt_error ($_) . "\n";
 		}
-		$current = $_;
-		$lineno = $.;
-	} elsif (/\s/ and $current) { # continued entry
-		$current .= "\n$_";
-	} else { # continued entry with missing start
-		print STDERR "Line $.: continued entry with missing start: " . fmt_error ($_) . "\n";
+	}
+	if (defined $current) {
+		parse0 ($current, $lineno);
 	}
 }
-if (defined $current) {
-	parse0 ($current, $lineno);
+
+foreach my $file (@ARGV) {
+	if ($file =~ /\.gz$/) {
+		open FILE, "zcat $file |";
+	} elsif ($file =~ /\.bz2$/) {
+		open FILE, "bzcat $file |";
+	} else {
+		open FILE, "<", $file or die "$file: $!";
+	}
+	parse_file ();
+	close FILE;
 }
 
 # processing
