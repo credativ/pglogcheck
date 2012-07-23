@@ -20,6 +20,9 @@
 .FATAL {
 	color:red;
 }
+.PANIC {
+	color:red;
+}
 </style>
 
 <script src="sorttable.js"></script>

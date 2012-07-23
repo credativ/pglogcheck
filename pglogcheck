@@ -23,12 +23,13 @@ my %vars = (
 	checkpoints => 0,
 );
 
-my @typesort = qw(FATAL ERROR WARNING LOG);
+my @typesort = qw(PANIC FATAL ERROR WARNING LOG);
 my %typesort = map { $typesort[$_] => $_ } (0 .. $#typesort);
 
 my %localtypemap = (
 	WARNUNG => 'WARNING',
 	FEHLER => 'ERROR',
+	PANIK => 'PANIC',
 );
 
 GetOptions (
@@ -218,7 +219,7 @@ sub parse ($$$$)
 			print STDERR "Could not parse line $.: $localtype:  " . fmt_error ($msg) . "\n";
 		}
 
-	} elsif ($type =~ /FATAL|ERROR|WARNING/) {
+	} elsif ($type =~ /PANIC|FATAL|ERROR|WARNING/) {
 		if ($msg =~ /^(konnte Block \d+ von tempor..?rer Datei nicht schreiben|konnte Relation \S+ nicht erweitern)/) {
 			$key =~ s/\d+/.../g;
 
@@ -257,7 +258,7 @@ sub parse ($$$$)
 sub parse0 ($$)
 {
 	my ($line, $lineno) = @_;
-	if ($line =~ /(.*?) (LOG|ERROR|FATAL|FEHLER|WARNING|WARNUNG):  (.*)/s) {
+	if ($line =~ /(.*?) (LOG|ERROR|PANIC|PANIK|FATAL|FEHLER|WARNING|WARNUNG):  (.*)/s) {
 		parse ($line, $lineno, $2, $3);
 	} elsif ($line =~ /(.*?) (ANWEISUNG|HINT|TIPP|DETAIL|ZUSAMMENHANG):  (.*)/s and $lastkey) { # query attached to an error message
 		my $msglist = $statement{$lastkey}->{examples}->{$lastmsg}->{msg};
