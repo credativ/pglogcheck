@@ -235,7 +235,9 @@ sub parse ($$$$$)
 
 		} elsif ($msg =~ /^(incomplete startup packet|unvollst..?ndiges Startpaket|could not receive data from client|konnte Daten vom Client nicht empfangen|unexpected EOF on client connection|unerwartetes EOF auf Client-Verbindung|SIGHUP empfangen, Konfigurationsdateien werden neu geladen)/) {
 
-		} elsif ($msg =~ /^(pam_authenticate fehlgeschlagen|konnte Daten nicht an den Client senden)/) {
+		# pam_authenticate failed: Conversation error
+		# pam_authenticate fehlgeschlagen
+		} elsif ($msg =~ /^(pam_authenticate |konnte Daten nicht an den Client senden)/) {
 
 		# konnte Verzeichnis >>pg_subtrans<< nicht leeren: anscheinender ?berlauf
 		} elsif ($msg =~ /^konnte Verzeichnis >>.*<< nicht leeren: /) {
