@@ -1,3 +1,4 @@
 pglogcheck /usr/bin
+pgreplace /usr/bin
 pglogcheck.template /usr/share/pglogcheck
 sorttable.js /usr/share/pglogcheck
