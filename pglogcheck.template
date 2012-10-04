@@ -127,7 +127,7 @@ function toggleclass (c)
 					<span id="coll_[%ex.id%]" style="display:none;" class="expando" onclick='javascript:collapse([%ex.id%])'>⊟ [%ex.msg_row_count%]</span>
 					<ul id="text_[%ex.id%]" style="display:none;">
 						[% FOREACH msg = ex.example_msgs %]
-						<li><i>Line [%msg.lineno%]:</i> [%msg.msg%]</li>
+						<li><i>[%msg.file%]:[%msg.lineno%]:</i> [%msg.msg%]</li>
 						[% END %]
 					</span>
 					[% END %]

@@ -237,6 +237,9 @@ sub parse ($$$$$)
 
 		} elsif ($msg =~ /^(pam_authenticate fehlgeschlagen|konnte Daten nicht an den Client senden)/) {
 
+		# konnte Verzeichnis >>pg_subtrans<< nicht leeren: anscheinender ?berlauf
+		} elsif ($msg =~ /^konnte Verzeichnis >>.*<< nicht leeren: /) {
+
 		} else {
 			print STDERR "$file:$.: Could not parse: $localtype:  " . fmt_error ($msg) . "\n";
 		}
@@ -271,6 +274,7 @@ sub parse ($$$$$)
 	$statement{$key}->{examples}->{$msg}->{count}++;
 	push @{ $statement{$key}->{examples}->{$msg}->{msg} }, {
 		msg => $line,
+		file => $file,
 		msglineno => $lineno,
 	};
 	$lastkey = $key;
@@ -389,6 +393,7 @@ foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
 			foreach my $msg (@{ $ex_h->{msg} }) {
 				push @{$ex_row->{example_msgs}}, {
 					msg => fmt_s ($msg->{msg}),
+					file => $msg->{file},
 					lineno => $msg->{msglineno},
 					id => $id++,
 				};
