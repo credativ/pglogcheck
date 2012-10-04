@@ -1,0 +1,19 @@
+Source: pglogcheck
+Maintainer: Christoph Berg <myon@debian.org>
+Section: database
+Priority: optional
+Standards-Version: 3.9.3
+Build-Depends: debhelper (>= 9)
+Vcs-Git: git://github.com/credativ/pglogcheck.git
+Vcs-Browser: https://github.com/credativ/pglogcheck
+
+Package: pglogcheck
+Architecture: all
+Depends: libtemplate-perl, ${misc:Depends}
+Description: PostgreSQL Log Analyzer
+ pglogcheck is a PostgreSQL log analyzer, similar to pgfouine and pgbadger.
+ .
+ It tries hard not to depend on the log format used, so there is no need to
+ configure the one-and-only log_prefix string. It also supports different log
+ languages. (Currently English and German, others are possible to add without
+ too much pain.)

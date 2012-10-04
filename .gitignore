@@ -1,0 +1,4 @@
+debian/files
+debian/pglogcheck
+debian/pglogcheck.debhelper.log
+debian/pglogcheck.substvars
