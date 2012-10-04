@@ -350,9 +350,9 @@ foreach my $s (keys %statement) {
 
 # output
 
-my $template = Template->new (
-	INCLUDEPATH => [ dirname ($0), '/usr/share/pglogcheck' ],
-);
+my $template = Template->new ({
+	INCLUDE_PATH => [ dirname ($0), '/usr/share/pglogcheck' ],
+});
 
 my $id = 1;
 foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
