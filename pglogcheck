@@ -135,9 +135,9 @@ sub eat_ticks ($)
 }
 
 my ($lastkey, $lastmsg);
-sub parse ($$$$)
+sub parse ($$$$$)
 {
-	my ($line, $lineno, $localtype, $msg) = @_;
+	my ($file, $line, $lineno, $localtype, $msg) = @_;
 	#print STDERR "Parsing $line\n  $type\n  $msg\n";
 	my $type = $localtypemap{$localtype} || $localtype; # english type name
 	my $key = $msg;
@@ -238,7 +238,7 @@ sub parse ($$$$)
 		} elsif ($msg =~ /^(pam_authenticate fehlgeschlagen|konnte Daten nicht an den Client senden)/) {
 
 		} else {
-			print STDERR "Could not parse line $.: $localtype:  " . fmt_error ($msg) . "\n";
+			print STDERR "$file:$.: Could not parse: $localtype:  " . fmt_error ($msg) . "\n";
 		}
 
 	} elsif ($type =~ /PANIC|FATAL|ERROR|WARNING/) {
@@ -254,7 +254,7 @@ sub parse ($$$$)
 		}
 
 	} else {
-		print STDERR "Unknown statement type $localtype in line $.: $localtype:  " . fmt_error ($msg) . "\n";
+		print STDERR "$file:$.: Unknown statement type $localtype: $localtype:  " . fmt_error ($msg) . "\n";
 	}
 
 	$key =~ s/\s+/ /g;
@@ -277,41 +277,42 @@ sub parse ($$$$)
 	$lastmsg = $msg;
 }
 
-sub parse0 ($$)
+sub parse0 ($$$)
 {
-	my ($line, $lineno) = @_;
+	my ($file, $line, $lineno) = @_;
 	if ($line =~ /(.*?) (LOG|ERROR|PANIC|PANIK|FATAL|FEHLER|WARNING|WARNUNG):  (.*)/s) {
-		parse ($line, $lineno, $2, $3);
+		parse ($file, $line, $lineno, $2, $3);
 	} elsif ($line =~ /(.*?) (ANWEISUNG|HINT|TIPP|DETAIL|ZUSAMMENHANG):  (.*)/s and $lastkey) { # query attached to an error message
 		my $msglist = $statement{$lastkey}->{examples}->{$lastmsg}->{msg};
 		@{$msglist}[@$msglist - 1]->{msg} .= "\n$line";
 	} else {
-		print STDERR "Could not parse line $.: " . fmt_error ($line) . "\n";
+		print STDERR "$file:$.: Could not parse: " . fmt_error ($line) . "\n";
 	}
 }
 
 # input
 
-sub parse_file ()
+sub parse_file ($)
 {
+	my ($file) = @_;
 	my ($current, $lineno);
 	while (<FILE>) {
 		chomp;
 		$vars{lines}++;
 		if (/^\S/) { # new log entry
 			if (defined $current) {
-				parse0 ($current, $lineno);
+				parse0 ($file, $current, $lineno);
 			}
 			$current = $_;
 			$lineno = $.;
 		} elsif (/\s/ and $current) { # continued entry
 			$current .= "\n$_";
 		} else { # continued entry with missing start
-			print STDERR "Line $.: continued entry with missing start: " . fmt_error ($_) . "\n";
+			print STDERR "$file:$.: continued entry with missing start: " . fmt_error ($_) . "\n";
 		}
 	}
 	if (defined $current) {
-		parse0 ($current, $lineno);
+		parse0 ($file, $current, $lineno);
 	}
 }
 
@@ -323,7 +324,7 @@ foreach my $file (@ARGV) {
 	} else {
 		open FILE, "<", $file or die "$file: $!";
 	}
-	parse_file ();
+	parse_file ($file);
 	close FILE;
 }
 
