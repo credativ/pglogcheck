@@ -23,6 +23,19 @@
 .PANIC {
 	color:red;
 }
+
+.COPY {
+}
+.DELETE {
+}
+.INSERT {
+}
+.SELECT {
+}
+.UPDATE {
+}
+.TRUNCATE {
+}
 </style>
 
 <script src="sorttable.js"></script>
@@ -95,6 +108,13 @@ function toggleclass (c)
 	<td>[%t.total%]</td>
 </tr>
 [% END %]
+[% FOREACH t = tag %]
+<tr>
+	<td>&nbsp;&nbsp;<span onclick='javascript:toggleclass("[%t.tag%]")' id="[%t.tag%]_title">[%t.tag%]</span></td>
+	<td>[%t.count%]</td>
+	<td>[%t.total%]</td>
+</tr>
+[% END %]
 </table>
 [%lines%] lines parsed, [%total%] run time, [%connections%] authorized connections, [%checkpoints%] checkpoints.
 </p>
@@ -103,7 +123,7 @@ function toggleclass (c)
 <tr><th>#</th><th>total</th><th>avg</th><th>query</th></tr>
 
 [% FOREACH r = rows %]
-<tr class="[%r.type%]">
+<tr class="[%r.type%][%IF r.tag%] [%r.tag%][%END%]">
 	<td valign="top">[%r.count%]</td>
 	<td valign="top" sorttable_customkey="[%r.total_raw%]">[%r.total%]</td>
 	<td valign="top" sorttable_customkey="[%r.avg_raw%]">[%r.avg%]</td>

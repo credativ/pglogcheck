@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2012 Christoph Berg <christoph.berg@credativ.de>
+# Copyright (C) 2012-2013 Christoph Berg <christoph.berg@credativ.de>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@ GetOptions (
 	"examples|e:10" => \$examples2,
 );
 
-my (%type, %statement);
+my (%type, %tag, %statement);
 
 sub fmt_t ($);
 sub fmt_t ($)
@@ -266,6 +266,14 @@ sub parse ($$$$$)
 	$key = substr ($key, 0, $keylen);
 	$statement{$key}->{type} = $type;
 	$statement{$key}->{localtype} = $localtype;
+	if ($key =~ /^\s*(SELECT|INSERT|UPDATE|DELETE|TRUNCATE|COPY)\b/i) {
+		my $tag = uc ($1);
+		$statement{$key}->{tag} = $tag;
+		$tag{$tag}->{count}++;
+		if ($time) {
+			$tag{$tag}->{total_raw} += $time;
+		}
+	}
 	$statement{$key}->{count}++;
 	$type{$type}->{count}++;
 	if ($time) {
@@ -288,7 +296,7 @@ sub parse0 ($$$)
 	my ($file, $line, $lineno) = @_;
 	if ($line =~ /(.*?) (LOG|ERROR|PANIC|PANIK|FATAL|FEHLER|WARNING|WARNUNG):  (.*)/s) {
 		parse ($file, $line, $lineno, $2, $3);
-	} elsif ($line =~ /(.*?) (ANWEISUNG|HINT|TIPP|DETAIL|ZUSAMMENHANG):  (.*)/s and $lastkey) { # query attached to an error message
+	} elsif ($line =~ /(.*?) (STATEMENT|ANWEISUNG|HINT|TIPP|DETAIL|ZUSAMMENHANG):  (.*)/s and $lastkey) { # query attached to an error message
 		my $msglist = $statement{$lastkey}->{examples}->{$lastmsg}->{msg};
 		@{$msglist}[@$msglist - 1]->{msg} .= "\n$line";
 	} else {
@@ -345,6 +353,12 @@ foreach my $t (sort { $typesort{$a} <=> $typesort{$b} } keys %type) {
 	$vars{msgs} += $type{$t}->{count};
 }
 
+foreach my $t (sort keys %tag) {
+	print STDERR "tag $t\n";
+	$tag{$t}->{tag} = $t;
+	$tag{$t}->{total} = fmt_t ($tag{$t}->{total_raw}) if ($tag{$t}->{total_raw});
+	push @{$vars{tag}}, $tag{$t};
+}
 
 foreach my $s (keys %statement) {
 	$statement{$s}->{total} ||= 0;
@@ -374,6 +388,7 @@ foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
 		avg_raw => $s_h->{avg},
 		type => $s_h->{type},
 		localtype => $s_h->{localtype},
+		tag => $s_h->{tag},
 		query => fmt_s ($s),
 		example_row_count => 0,
 		id => $id++,
