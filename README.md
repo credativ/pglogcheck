@@ -23,3 +23,10 @@ To install, simply copy "pglogcheck" and "pglogcheck.template" to some
 directory (or run from the git checkout). The HTML file generated will
 optionally need the "sorttable.js" file. (If it is missing, interactive table
 sorting will not work.)
+
+Usage
+-----
+
+Simply invoke it on one or more logfiles:
+
+./pglogcheck *.log > db.html
