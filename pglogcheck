@@ -26,7 +26,9 @@ use File::Basename;
 use Getopt::Long;
 Getopt::Long::Configure ("bundling");
 use Template;
+use Time::HiRes qw(time);
 
+my $time_start = time;
 my ($key1, $key2) = qw(total count);
 my $examples1 = 10;
 my $examples2 = 3;
@@ -342,6 +344,8 @@ foreach my $file (@ARGV) {
 	close FILE;
 }
 
+$vars{files} = join ' ', @ARGV;
+
 # processing
 
 $vars{total} = fmt_t ($vars{total_raw});
@@ -424,4 +428,5 @@ foreach my $s (sort { $statement{$b}->{$key1} <=> $statement{$a}->{$key1} ||
 	push @{$vars{rows}}, $row;
 }
 
+$vars{process_time} = sprintf "%.3fs", time - $time_start;
 $template->process('pglogcheck.template', \%vars) || die $template->error();

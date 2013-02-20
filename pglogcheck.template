@@ -163,3 +163,8 @@ function toggleclass (c)
 
 </body>
 </html>
+
+<!--
+ input files: [% files %]
+ process time: [% process_time %]
+-->
