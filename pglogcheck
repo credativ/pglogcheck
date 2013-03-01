@@ -252,6 +252,11 @@ sub parse ($$$$$)
 		if ($msg =~ /^(konnte Block \d+ von tempor..?rer Datei nicht schreiben|konnte Relation \S+ nicht erweitern)/) {
 			$key =~ s/\d+/.../g;
 
+		# FEHLER: ungültige Byte-Sequenz für Kodierung »...«: 0xf66e656b 
+		} elsif ($msg =~ /^(ung..?ltige Byte-Sequenz für Kodierung)/) {
+			$key =~ s/: 0x[0-9a-f]+/: .../;
+			$msg = $key;
+
 		} else {
 			#$vars{type}->{$type =~ /^F/ ? 'FATAL' : 'WARNING'}++; #XXX
 			$key =~ s/bei Zeichen \d+/bei Zeichen .../;
