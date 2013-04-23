@@ -40,3 +40,13 @@ Sorting can be altered by clicking on the column titles.
 Usage
 -----
 `./stat_statements [conninfo_string] > statements.html`
+
+Examples:
+
+`./stat_statements "host=db.example.com dbname=foobar user=me" > statements.html`
+
+`./stat_statements "service=dbprod" > statements.html`
+
+To configure the database connection used, you can also set the various PG*
+variables (PGHOST, PGDATABASE, PGUSER, ...), and store passwords in your
+~/.pgpass file.
