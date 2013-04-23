@@ -30,3 +30,13 @@ Usage
 Simply invoke it on one or more logfiles:
 
 ./pglogcheck *.log > db.html
+
+stat_statements
+===============
+
+`stat_statements` dumps the contents of `pg_stat_statements` as a html report.
+Sorting can be altered by clicking on the column titles.
+
+Usage
+-----
+`./stat_statements [conninfo_string] > statements.html`
