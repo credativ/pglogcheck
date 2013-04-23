@@ -12,7 +12,7 @@ Prerequisites
 -------------
 
  * Perl
- * Template.pm (libtemplate-perl)
+ * Template.pm (libtemplate-perl in Debian/Ubuntu)
 
 Installation
 ------------
@@ -29,7 +29,7 @@ Usage
 
 Simply invoke it on one or more logfiles:
 
-./pglogcheck *.log > db.html
+`./pglogcheck *.log > db.html`
 
 stat_statements
 ===============
