@@ -202,7 +202,7 @@ sub parse ($$$$$)
 			$msg =~ s/[\d.]+(%| s)/?$1/g; # eat percentages and times
 			$msg =~ s/[1-9][\d.]*/N/g; # eat non-zero numbers
 
-		} elsif ($msg =~ /^(Checkpoints passieren zu oft)/) {
+		} elsif ($msg =~ /^(checkpoints are occurring too frequently|Checkpoints passieren zu oft)/) {
 			$key = $1;
 
 		} elsif ($msg =~ /^(autovacuum: processing database) "(.*)"/) {
@@ -213,14 +213,14 @@ sub parse ($$$$$)
 		#         Pages: 0 entfernt, 1236583 noch vorhanden
 		#         Tuple: 750 entfernt, 28942414 noch vorhanden
 		#         Systembenutzung: CPU 0.82s/0.92u sec elapsed 3257.34 sec
-		} elsif ($msg =~ /^(automatisches Vacuum von Tabelle »\S+«)/) {
+		} elsif ($msg =~ /^(automatic (?:vacuum|analyze) of table "\S+"|automatisches Vacuum von Tabelle »\S+«)/) {
 			$key = $1;
 			if ($msg =~ /elapsed ([\d.]+) s/) {
 				$time = $1;
 			}
 
 		# Prozess 11467 erlangte ExclusiveLock-Sperre auf Tupel (59, 48) von Relation 784775314 von Datenbank 784774385 nach 79946,917 ms
-		} elsif ($msg =~ /^Prozess \d+ (erlangte|wartet)/) {
+		} elsif ($msg =~ /^(process \d+ (still waiting|acquired)|Prozess \d+ (erlangte|wartet))/) {
 			if ($msg =~ /([\d.,]+) ms/) {
 				$time = $1;
 				$time =~ s/,/./;
@@ -228,7 +228,7 @@ sub parse ($$$$$)
 				$msg =~ s/[\d.,]+ ms/... ms/;
 			}
 			$key = $msg;
-			$key =~ s/(Prozess|Transaktion|Relation|Datenbank) \d+/$1 .../g;
+			$key =~ s/(process|Prozess|transaction|Transaktion|Relation|Datenbank) \d+/$1 .../g;
 			$key =~ s/(auf Tupel) \([\d, ]+\)/$1 (...)/g;
 
 		# temporäre Datei: Pfad »base/pgsql_tmp/pgsql_tmp25529.0«, Größe 57974784
