@@ -337,8 +337,14 @@ sub parse_file ($)
 	}
 }
 
+unless (@ARGV) {
+	push @ARGV, "-"; # use STDIN
+}
+
 foreach my $file (@ARGV) {
-	if ($file =~ /\.gz$/) {
+	if ($file eq "-") {
+		open FILE, ">&", \*STDIN or die "Can't dup STDIN: $!";
+	} elsif ($file =~ /\.gz$/) {
 		open FILE, "zcat $file |";
 	} elsif ($file =~ /\.bz2$/) {
 		open FILE, "bzcat $file |";
