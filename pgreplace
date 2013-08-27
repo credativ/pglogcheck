@@ -27,7 +27,7 @@ my %params;
 my $queries = '';
 
 while (<>) {
-	if (/DETAIL:  ?Parameter:/) {
+	if (/DETAIL:  ?(?:parameters|Parameter):/) {
 		my @matches = /\$\d+ = '.*?'/g;
 		foreach my $match (@matches) {
 			$match =~ /\$(\d+) = ('.*?')/g;
