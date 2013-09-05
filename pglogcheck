@@ -235,6 +235,10 @@ sub parse ($$$$$)
 		} elsif ($msg =~ /^(temporäre Datei): Pfad »(\S+)«, Größe \d+/) {
 			$key = $1;
 
+		# restored log file "000000010000042300000054" from archive
+		} elsif ($msg =~ /^restored log file ".*" from archive/) {
+			$key =~ s/".*"/"..."/;
+
 		} elsif ($msg =~ /^(incomplete startup packet|unvollst..?ndiges Startpaket|could not receive data from client|konnte Daten vom Client nicht empfangen|unexpected EOF on client connection|unerwartetes EOF auf Client-Verbindung|SIGHUP empfangen, Konfigurationsdateien werden neu geladen)/) {
 
 		# pam_authenticate failed: Conversation error
