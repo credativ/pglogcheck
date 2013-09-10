@@ -220,6 +220,7 @@ sub parse ($$$$$)
 			}
 
 		# Prozess 11467 erlangte ExclusiveLock-Sperre auf Tupel (59, 48) von Relation 784775314 von Datenbank 784774385 nach 79946,917 ms
+		#  Prozess 4637 erlangte AccessShareLock-Sperre auf Relation 784774607 der Datenbank 16414 nach 347290,823 ms bei Zeichen 2764
 		} elsif ($msg =~ /^(process \d+ (still waiting|acquired)|Prozess \d+ (erlangte|wartet))/) {
 			if ($msg =~ /([\d.,]+) ms/) {
 				$time = $1;
@@ -230,6 +231,7 @@ sub parse ($$$$$)
 			$key = $msg;
 			$key =~ s/(process|Prozess|transaction|Transaktion|Relation|Datenbank) \d+/$1 .../g;
 			$key =~ s/(auf Tupel) \([\d, ]+\)/$1 (...)/g;
+			$key =~ s/ bei Zeichen \d+//;
 
 		# temporäre Datei: Pfad »base/pgsql_tmp/pgsql_tmp25529.0«, Größe 57974784
 		} elsif ($msg =~ /^(temporäre Datei): Pfad »(\S+)«, Größe \d+/) {
