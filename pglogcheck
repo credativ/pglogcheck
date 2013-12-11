@@ -38,8 +38,9 @@ my $errorlen = 500;
 
 my %vars = (
 	lines => 0,
-	type => [],
 	msgs => 0,
+	unknown_msgs => 0,
+	type => [],
 	total_raw => 0.0,
 	connections => 0,
 	checkpoints => 0,
@@ -309,11 +310,13 @@ sub parse0 ($$$)
 	my ($file, $line, $lineno) = @_;
 	if ($line =~ /(.*?) (LOG|ERROR|PANIC|PANIK|FATAL|FEHLER|WARNING|WARNUNG):  (.*)/s) {
 		parse ($file, $line, $lineno, $2, $3);
+		$vars{msgs}++;
 	} elsif ($line =~ /(.*?) (STATEMENT|ANWEISUNG|HINT|TIPP|DETAIL|ZUSAMMENHANG):  (.*)/s and $lastkey) { # query attached to an error message
 		my $msglist = $statement{$lastkey}->{examples}->{$lastmsg}->{msg};
 		@{$msglist}[@$msglist - 1]->{msg} .= "\n$line";
 	} else {
 		print STDERR "$file:$.: Could not parse: " . fmt_error ($line) . "\n";
+		$vars{unknown_msgs}++;
 	}
 }
 
@@ -371,7 +374,6 @@ foreach my $t (sort { $typesort{$a} <=> $typesort{$b} } keys %type) {
 	$type{$t}->{type} = $t;
 	$type{$t}->{total} = fmt_t ($type{$t}->{total_raw}) if ($type{$t}->{total_raw});
 	push @{$vars{type}}, $type{$t};
-	$vars{msgs} += $type{$t}->{count};
 }
 
 foreach my $t (sort keys %tag) {
