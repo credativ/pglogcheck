@@ -164,7 +164,8 @@ sub parse ($$$$$)
 			($key, $msg) = (eat_values ($1), eat_ticks ($1));
 
 		# log_statement = 'all', prepared statement
-		} elsif ($msg =~ /^(Parsen|Binden|Ausf..?hren) (.*): (.*)/s) {
+		# execute <unnamed>: select r
+		} elsif ($msg =~ /^(Parsen|Binden|execute|Ausf..?hren) (.*?): (.*)/s) {
 			my ($cmd, $name, $query) = ($1, $2, $3);
 			$name =~ s/\d/N/g;
 			$msg = "$cmd $name: $query";
