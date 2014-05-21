@@ -160,7 +160,7 @@ sub parse ($$$$$)
 			$key = eat_values ($msg);
 
 		# log_statement = 'all'
-		} elsif ($msg =~ /^(?:Anweisung): (.*)/s) {
+		} elsif ($msg =~ /^(?:statement|Anweisung): (.*)/s) {
 			($key, $msg) = (eat_values ($1), eat_ticks ($1));
 
 		# log_statement = 'all', prepared statement
@@ -232,7 +232,7 @@ sub parse ($$$$$)
 			}
 			$key = $msg;
 			$key =~ s/(process|Prozess|transaction|Transaktion|Relation|Datenbank) \d+/$1 .../g;
-			$key =~ s/(auf Tupel) \([\d, ]+\)/$1 (...)/g;
+			$key =~ s/(on tuple|auf Tupel) \([\d, ]+\)/$1 (...)/g;
 			$key =~ s/ bei Zeichen \d+//;
 
 		# temporäre Datei: Pfad »base/pgsql_tmp/pgsql_tmp25529.0«, Größe 57974784
@@ -243,7 +243,7 @@ sub parse ($$$$$)
 		} elsif ($msg =~ /^restored log file ".*" from archive/) {
 			$key =~ s/".*"/"..."/;
 
-		} elsif ($msg =~ /^(incomplete startup packet|unvollst..?ndiges Startpaket|could not receive data from client|konnte Daten vom Client nicht empfangen|unexpected EOF on client connection|unerwartetes EOF auf Client-Verbindung|SIGHUP empfangen, Konfigurationsdateien werden neu geladen)/) {
+		} elsif ($msg =~ /^(incomplete startup packet|unvollst..?ndiges Startpaket|could not receive data from client|konnte Daten vom Client nicht empfangen|unexpected EOF on client connection|unerwartetes EOF auf Client-Verbindung|incomplete message from client|received SIGHUP, reloading configuration files|SIGHUP empfangen, Konfigurationsdateien werden neu geladen)/) {
 
 		# pam_authenticate failed: Conversation error
 		# pam_authenticate fehlgeschlagen
@@ -326,8 +326,15 @@ sub parse0 ($$$)
 sub parse_file ($)
 {
 	my ($file) = @_;
-	my ($current, $lineno);
+	my ($current, $lineno, $bytes);
+	my $term = -t 2;
+	print STDERR "$file: " if ($term);
+
 	while (<FILE>) {
+		if ($term) {
+			$bytes += length $_;
+			print STDERR "\r$file: $. lines, $bytes bytes " if ($. % 10000 == 0);
+		}
 		chomp;
 		$vars{lines}++;
 		if (/^\S/) { # new log entry
@@ -345,6 +352,7 @@ sub parse_file ($)
 	if (defined $current) {
 		parse0 ($file, $current, $lineno);
 	}
+	print STDERR "\r$file: $. lines, $bytes bytes\n" if ($term);
 }
 
 unless (@ARGV) {
