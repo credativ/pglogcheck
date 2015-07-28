@@ -131,8 +131,8 @@ function toggleclass (c)
 		[%r.localtype%]: <b>[%r.query%]</b>
 		[% IF r.example_rows %]
 		<br />
-		<span id="exp_[%r.id%]" class="expando" onclick='javascript:expand([%r.id%])'>⊞ [%r.example_row_count%]</span>
-		<span id="text_[%r.id%]" class="expando" onclick='javascript:collapse([%r.id%])' style="display:none;">⊟ [%r.example_row_count%]</span>
+		<span id="exp_[%r.id%]" class="expando" onclick='javascript:expand([%r.id%])'>⊞ [%r.example_row_count%] example[% IF r.example_row_count != 1 %]s[% END %]</span>
+		<span id="text_[%r.id%]" class="expando" onclick='javascript:collapse([%r.id%])' style="display:none;">⊟ [%r.example_row_count%] example[% IF r.example_row_count != 1 %]s[% END %]</span>
 		[% END %]
 		[% IF r.example_rows %]
 		<table id="coll_[%r.id%]" style="display:none;" class="sortable" style="vertical-align:top;">
@@ -143,8 +143,8 @@ function toggleclass (c)
 				<td>[%ex.example%]
 					[% IF ex.example_msgs %]
 					<br />
-					<span id="exp_[%ex.id%]" class="expando" onclick='javascript:expand([%ex.id%])'>⊞ [%ex.msg_row_count%]</span>
-					<span id="coll_[%ex.id%]" style="display:none;" class="expando" onclick='javascript:collapse([%ex.id%])'>⊟ [%ex.msg_row_count%]</span>
+					<span id="exp_[%ex.id%]" class="expando" onclick='javascript:expand([%ex.id%])'>⊞ [%ex.msg_row_count%] log line[% IF ex.msg_row_count != 1 %]s[% END %]</span>
+					<span id="coll_[%ex.id%]" style="display:none;" class="expando" onclick='javascript:collapse([%ex.id%])'>⊟ [%ex.msg_row_count%] log line[% IF ex.msg_row_count != 1 %]s[% END %]</span>
 					<ul id="text_[%ex.id%]" style="display:none;">
 						[% FOREACH msg = ex.example_msgs %]
 						<li><i>[%msg.file%]:[%msg.lineno%]:</i> [%msg.msg%]</li>

@@ -125,7 +125,7 @@ function toggleclass (c)
 		LOG: <b>Ausführen &lt;unnamed&gt;: select * from tbl where id in (...)</b>
 		
 		<br />
-		<span id="exp_1" class="expando" onclick='javascript:expand(1)'>⊞ 1</span>
+		<span id="exp_1" class="expando" onclick='javascript:expand(1)'>⊞ 1 example</span>
 		<span id="text_1" class="expando" onclick='javascript:collapse(1)' style="display:none;">⊟ 1</span>
 		
 		
