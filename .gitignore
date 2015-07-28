@@ -1,3 +1,5 @@
+/result/
+
 debian/files
 debian/pglogcheck
 debian/pglogcheck.debhelper.log

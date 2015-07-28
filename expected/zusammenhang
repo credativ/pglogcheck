@@ -100,71 +100,66 @@ function toggleclass (c)
 <p>
 <table class="sortable" border="1">
 <thead><tr><th>Type</th><th>#</th><th>total</th></tr></thead>
-<tfoot><tr><td></td><td>[%msgs%]</td><td>[%total%]</td></tr></tfoot>
-[% FOREACH t = type %]
+<tfoot><tr><td></td><td>1</td><td></td></tr></tfoot>
+
 <tr>
-	<td><span onclick='javascript:toggleclass("[%t.type%]")' id="[%t.type%]_title">[%t.type%]</span></td>
-	<td>[%t.count%]</td>
-	<td>[%t.total%]</td>
+	<td><span onclick='javascript:toggleclass("ERROR")' id="ERROR_title">ERROR</span></td>
+	<td>1</td>
+	<td></td>
 </tr>
-[% END %]
-[% FOREACH t = tag %]
-<tr>
-	<td>&nbsp;&nbsp;<span onclick='javascript:toggleclass("[%t.tag%]")' id="[%t.tag%]_title">[%t.tag%]</span></td>
-	<td>[%t.count%]</td>
-	<td>[%t.total%]</td>
-</tr>
-[% END %]
+
+
 </table>
-[%lines%] lines parsed with [%msgs%] entries ([%unknown_msgs%] not parsable), [%total%] run time, [%connections%] authorized connections, [%checkpoints%] checkpoints.
+2 lines parsed with 1 entries (0 not parsable),  run time, 0 authorized connections, 0 checkpoints.
 </p>
 
 <table class="sortable" style="vertical-align:top;">
 <tr><th>#</th><th>total</th><th>avg</th><th>query</th></tr>
 
-[% FOREACH r = rows %]
-<tr class="[%r.type%][%IF r.tag%] [%r.tag%][%END%]">
-	<td valign="top">[%r.count%]</td>
-	<td valign="top" sorttable_customkey="[%r.total_raw%]">[%r.total%]</td>
-	<td valign="top" sorttable_customkey="[%r.avg_raw%]">[%r.avg%]</td>
+
+<tr class="ERROR">
+	<td valign="top">1</td>
+	<td valign="top" sorttable_customkey="0"></td>
+	<td valign="top" sorttable_customkey="0"></td>
 	<td>
-		[%r.localtype%]: <b>[%r.query%]</b>
-		[% IF r.example_rows %]
+		FEHLER: <b>storniere Autovacuum-Aufgabe</b>
+		
 		<br />
-		<span id="exp_[%r.id%]" class="expando" onclick='javascript:expand([%r.id%])'>⊞ [%r.example_row_count%]</span>
-		<span id="text_[%r.id%]" class="expando" onclick='javascript:collapse([%r.id%])' style="display:none;">⊟ [%r.example_row_count%]</span>
-		[% END %]
-		[% IF r.example_rows %]
-		<table id="coll_[%r.id%]" style="display:none;" class="sortable" style="vertical-align:top;">
+		<span id="exp_1" class="expando" onclick='javascript:expand(1)'>⊞ 1</span>
+		<span id="text_1" class="expando" onclick='javascript:collapse(1)' style="display:none;">⊟ 1</span>
+		
+		
+		<table id="coll_1" style="display:none;" class="sortable" style="vertical-align:top;">
 			<tr><th>#</th><th>query</th></tr>
-			[% FOREACH ex = r.example_rows %]
+			
 			<tr>
-				<td valign="top">[%ex.count%]</td>
-				<td>[%ex.example%]
-					[% IF ex.example_msgs %]
+				<td valign="top">1</td>
+				<td>storniere Autovacuum-Aufgabe
+					
 					<br />
-					<span id="exp_[%ex.id%]" class="expando" onclick='javascript:expand([%ex.id%])'>⊞ [%ex.msg_row_count%]</span>
-					<span id="coll_[%ex.id%]" style="display:none;" class="expando" onclick='javascript:collapse([%ex.id%])'>⊟ [%ex.msg_row_count%]</span>
-					<ul id="text_[%ex.id%]" style="display:none;">
-						[% FOREACH msg = ex.example_msgs %]
-						<li><i>[%msg.file%]:[%msg.lineno%]:</i> [%msg.msg%]</li>
-						[% END %]
+					<span id="exp_2" class="expando" onclick='javascript:expand(2)'>⊞ 1</span>
+					<span id="coll_2" style="display:none;" class="expando" onclick='javascript:collapse(2)'>⊟ 1</span>
+					<ul id="text_2" style="display:none;">
+						
+						<li><i>test/zusammenhang:1:</i> 2012-03-11 14:44:26 CET [20087]: [1-1] FEHLER:  storniere Autovacuum-Aufgabe<br />
+2012-03-11 14:44:26 CET [20087]: [2-1] ZUSAMMENHANG:  automatisches Vacuum der Tabelle »postgres.public.log«</li>
+						
 					</span>
-					[% END %]
+					
 				</td>
 			</tr>
-			[% END %]
+			
 		</table>
-		[% END %]
+		
 	</td>
 </tr>
-[% END %]
+
 </table>
 
 </body>
 </html>
 
 <!--
- input files: [% files %]
-[% IF process_time %] process time: [% process_time %][% END %]
+ input files: test/zusammenhang
+
 -->
