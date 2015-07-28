@@ -1,0 +1,117 @@
+#!/usr/bin/perl
+
+# Copyright (C) 2013 Christoph Berg <christoph.berg@credativ.de>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+use strict;
+use warnings;
+use DBI;
+use File::Basename;
+use Template;
+
+my $substrlen = 200;
+
+sub fmt_t ($);
+sub fmt_t ($)
+{
+	my $sec = shift;
+	if ($sec == 0) {
+		return '';
+	} elsif ($sec < 0.1) {
+		sprintf "%.3fms", $sec * 1000.0;
+	} elsif ($sec < 1.0) {
+		sprintf "%.0fms", $sec * 1000.0;
+	} elsif ($sec < 60.0) {
+		sprintf "%.3fs", $sec;
+	} elsif ($sec < 86400.0) {
+		sprintf "%d:%02d:%02.0f", int ($sec / 3600.0), int (($sec % 3600.0) / 60.0), $sec % 60.0;
+	} else {
+		sprintf ("%d d ", int ($sec / 86400.0)) . fmt_t ($sec % 86400.0);
+	}
+}
+
+sub fmt_s ($$)
+{
+	my $str = shift;
+	my $substrlen = shift;
+	$str =~ s/\s+/ /g;
+	if (length $str > $substrlen) {
+		$str = substr ($str, 0, $substrlen) . "...";
+	}
+	$str =~ s/&/&amp;/g;
+	$str =~ s/</&lt;/g;
+	$str =~ s/>/&gt;/g;
+	return $str;
+}
+
+sub fmt_f ($)
+{
+	my $str = shift;
+	$str =~ s/&/&amp;/g;
+	$str =~ s/</&lt;/g;
+	$str =~ s/>/&gt;/g;
+	$str =~ s/^(\s+)/'&nbsp;' x length($1)/egm;
+	$str =~ s/$/<br \/>/gm;
+	return $str;
+}
+
+# get data
+
+my %vars = (
+	rows => [],
+	n_rows => 0,
+	calls => 0,
+	total_time => 0,
+);
+
+my $conninfo = $ARGV[0] || '';
+my $dbh = DBI->connect("dbi:Pg:$conninfo", '', '',
+	{RaiseError => 1, PrintError => 0, AutoCommit => 0});
+
+my $q = $dbh->prepare ("SELECT pg_stat_plans_explain(planid, userid, dbid), *
+	FROM pg_stat_plans p
+	JOIN pg_authid a ON (p.userid = a.oid)
+	JOIN pg_database d ON (p.dbid = d.oid)
+	ORDER BY s.total_time DESC");
+$q->execute;
+while (my $row = $q->fetchrow_hashref) {
+	$row->{query_s} = fmt_s ($row->{query}, 150);
+	$row->{query_f} = fmt_f ($row->{query});
+	$row->{total_time} = sprintf '%.3f', $row->{total_time}; # this is sometimes 180.297999999922
+	foreach my $key (%$row) {
+		$row->{$key} ||= ''; # replace 0 by empty string
+	}
+	push @{$vars{rows}}, $row;
+	$vars{n_rows}++;
+	$vars{calls} += $row->{calls};
+	$vars{total_time} += $row->{total_time};
+}
+$dbh->disconnect;
+
+# process
+$vars{total_time} = sprintf '%.3f', $vars{total_time};
+
+# output
+
+my $template = Template->new ({
+	INCLUDE_PATH => [ dirname ($0), '/usr/share/pglogcheck' ],
+});
+
+$template->process('stat_plans.template', \%vars) || die $template->error();

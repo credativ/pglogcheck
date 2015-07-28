@@ -1,0 +1,138 @@
+<html>
+<head>
+<title>pg_stat_plans</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+
+<style>
+.expando {
+	font-size:small;
+	font-style:italic;
+	color:gray;
+}
+td div.popup { display: none; }
+td:hover div.popup {
+	display: block;
+	position: absolute;
+	background: #eeeeee;
+	border-width: 1px;
+	border-style: solid;
+	border-color: black;
+}
+td:hover div.plain {
+	color: white;
+}
+</style>
+
+<script src="sorttable.js"></script>
+
+<script type="text/javascript" language="JavaScript">
+function objectOver(x) {
+	x.style.color="blue";
+}
+function objectOut(x) {
+	x.style.color="black";
+}
+function expand (x){
+	var id=document.getElementById("text_"+x) ;
+	id.style.display="block";
+	var id=document.getElementById("coll_"+x) ;
+	id.style.display="block";
+	var id=document.getElementById("exp_"+x) ;
+	id.style.display="none";
+}
+function collapse (x){
+	var id=document.getElementById("text_"+x) ;
+	id.style.display="none";
+	var id=document.getElementById("coll_"+x) ;
+	id.style.display="none";
+	var id=document.getElementById("exp_"+x) ;
+	id.style.display="block";
+}
+</script>
+
+<script type="text/javascript">
+// http://snippets.dzone.com/posts/show/3737
+function toggleclass (c)
+{
+	if (!document.styleSheets) return;
+	var thecss = new Array();
+	if (document.styleSheets[0].cssRules) { // Standards Compliant
+		thecss = document.styleSheets[0].cssRules;
+	} else {
+		thecss = document.styleSheets[0].rules; // IE
+	}
+	for (i=0; i<thecss.length; i++) {
+		if (thecss[i].selectorText == "."+c) {
+			if (thecss[i].style.cssText.match (/display: *none;/)) {
+				thecss[i].style.cssText = thecss[i].style.cssText.replace (/display: *none;/, '');
+				var id=document.getElementById(c+"_title") ;
+				id.style.textDecoration="none";
+			} else {
+				thecss[i].style.cssText += 'display:none;';
+				var id=document.getElementById(c+"_title") ;
+				id.style.textDecoration="line-through";
+			}
+		}
+	}
+}
+</script>
+
+</head>
+<body>
+
+<h1>pg_stat_plans</h1>
+
+<p>
+[%n_rows%] queries, [%calls%] calls, [%total_time%]ms total time
+</p>
+
+<table class="sortable" style="vertical-align:top;">
+<tr style="background:grey;">
+	<th valign="top">userid</th>
+	<th valign="top">dbid</th>
+	<th valign="top">query</th>
+	<th valign="top">calls</th>
+	<th valign="top">total<br />time</th>
+	<th valign="top">avg<br />time</th>
+	<th valign="top">rows</th>
+	<th valign="top">shared<br />blks<br />hit</th>
+	<th valign="top">shared<br />blks<br />read</th>
+	<th valign="top">shared<br />blks<br />dirtied</th>
+	<th valign="top">shared<br />blks<br />written</th>
+	<th valign="top">local<br />blks<br />hit</th>
+	<th valign="top">local<br />blks<br />read</th>
+	<th valign="top">local<br />blks<br />dirtied</th>
+	<th valign="top">local<br />blks<br />written</th>
+	<th valign="top">temp<br />blks<br />read</th>
+	<th valign="top">temp<br />blks<br />written</th>
+	<th valign="top">blk<br />read<br />time</th>
+	<th valign="top">blk<br />write<br />time</th>
+</tr>
+
+[% FOREACH r = rows %]
+<tr>
+	<td valign="top">[%r.user%]</td>
+	<td valign="top">[%r.database%]</td>
+	<td valign="top"><div class="popup">[%r.query_f%]</div><div class="plain">[%r.query_s%]</div></td>
+	<td valign="top" align="right">[%r.calls%]</td>
+	<td valign="top" align="right">[%r.total_time%]</td>
+	<td valign="top" align="right">[%r.avg_time%]</td>
+	<td valign="top" align="right">[%r.rows%]</td%]</td>
+	<td valign="top" align="right">[%r.shared_blks_hit%]</td>
+	<td valign="top" align="right">[%r.shared_blks_read%]</td>
+	<td valign="top" align="right">[%r.shared_blks_dirtied%]</td>
+	<td valign="top" align="right">[%r.shared_blks_written%]</td>
+	<td valign="top" align="right">[%r.local_blks_hit%]</td>
+	<td valign="top" align="right">[%r.local_blks_read%]</td>
+	<td valign="top" align="right">[%r.local_blks_dirtied%]</td>
+	<td valign="top" align="right">[%r.local_blks_written%]</td>
+	<td valign="top" align="right">[%r.temp_blks_read%]</td>
+	<td valign="top" align="right">[%r.temp_blks_written%]</td>
+	<td valign="top" align="right">[%r.blk_read_time%]</td>
+	<td valign="top" align="right">[%r.blk_write_time%]</td>
+</tr>
+[% END %]
+</table>
+
+</body>
+</html>
