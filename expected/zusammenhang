@@ -126,7 +126,7 @@ function toggleclass (c)
 		
 		<br />
 		<span id="exp_1" class="expando" onclick='javascript:expand(1)'>⊞ 1 example</span>
-		<span id="text_1" class="expando" onclick='javascript:collapse(1)' style="display:none;">⊟ 1</span>
+		<span id="text_1" class="expando" onclick='javascript:collapse(1)' style="display:none;">⊟ 1 example</span>
 		
 		
 		<table id="coll_1" style="display:none;" class="sortable" style="vertical-align:top;">
@@ -137,8 +137,8 @@ function toggleclass (c)
 				<td>storniere Autovacuum-Aufgabe
 					
 					<br />
-					<span id="exp_2" class="expando" onclick='javascript:expand(2)'>⊞ 1</span>
-					<span id="coll_2" style="display:none;" class="expando" onclick='javascript:collapse(2)'>⊟ 1</span>
+					<span id="exp_2" class="expando" onclick='javascript:expand(2)'>⊞ 1 log line</span>
+					<span id="coll_2" style="display:none;" class="expando" onclick='javascript:collapse(2)'>⊟ 1 log line</span>
 					<ul id="text_2" style="display:none;">
 						
 						<li><i>test/zusammenhang:1:</i> 2012-03-11 14:44:26 CET [20087]: [1-1] FEHLER:  storniere Autovacuum-Aufgabe<br />
