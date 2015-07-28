@@ -315,7 +315,7 @@ sub parse0 ($$$)
 	if ($line =~ /(.*?)\b(LOG|ERROR|PANIC|PANIK|FATAL|FEHLER|WARNING|WARNUNG):  (.*)/s) {
 		parse ($file, $line, $lineno, $2, $3);
 		$vars{msgs}++;
-	} elsif ($line =~ /(.*?)\b(STATEMENT|ANWEISUNG|HINT|TIPP|DETAIL|ZUSAMMENHANG):  (.*)/s and $lastkey) { # query attached to an error message
+	} elsif ($line =~ /(.*?)\b(STATEMENT|ANWEISUNG|HINT|TIPP|DETAIL|CONTEXT|ZUSAMMENHANG):  (.*)/s and $lastkey) { # query attached to an error message
 		my $msglist = $statement{$lastkey}->{examples}->{$lastmsg}->{msg};
 		@{$msglist}[@$msglist - 1]->{msg} .= "\n$line";
 	} else {
