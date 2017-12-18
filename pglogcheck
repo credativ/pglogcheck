@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2012-2013 Christoph Berg <christoph.berg@credativ.de>
+# Copyright (C) 2012-2017 Christoph Berg <christoph.berg@credativ.de>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -128,6 +128,7 @@ sub eat_values ($)
 	$msg =~ s/(\bIN\s*\()(.*?)\)/$1...)/ig; # IN (foobar) -> IN (...)
 	$msg =~ s/(\bVALUES\s*\()(.*)\)/$1 . eat_strings ($2) . ')'/ieg; # VALUES (foo, bar) -> VALUES (?, ?)
 	$msg =~ s/'(.*?)'/"'" . dots ($1) . "'"/egs;
+	$msg =~ s/(= *)(\d+)/$1?/g;
 	$msg =~ s/(SELECT )(.{100}).+?( FROM )/$1$2 ... $3/i;
 	return $msg;
 }
@@ -196,12 +197,12 @@ sub parse ($$$$$)
 			$msg =~ s/ (session time|Sitzungszeit): \S+/ $1: .../;
 			$msg =~ s/ port=\S+//;
 
-		} elsif ($msg =~ /^(checkpoint starting):/) {
+		} elsif ($msg =~ /^((?:checkpoint|restartpoint) starting):/) {
 			$key = $1;
 			$vars{checkpoints}++;
 
 		# checkpoint complete: wrote 0 buffers (0.0%); 0 transaction log file(s) added, 0 removed, 0 recycled; write=0.000 s, sync=0.000 s, total=0.008 s
-		} elsif ($msg =~ /^checkpoint complete: .* total=([\d.]+) s/) {
+		} elsif ($msg =~ /^(?:checkpoint|restartpoint) complete: .* total=([\d.]+) s/) {
 			$time = $1;
 			$key =~ s/[\d.]+/?/g; # eat all numbers
 			$msg =~ s/[\d.]+(%| s)/?$1/g; # eat percentages and times
@@ -219,8 +220,9 @@ sub parse ($$$$$)
 		#         Tuple: 750 entfernt, 28942414 noch vorhanden
 		#         Systembenutzung: CPU 0.82s/0.92u sec elapsed 3257.34 sec
 		} elsif ($msg =~ /^(automatic (?:vacuum|analyze) of table "\S+"|automatisches Vacuum von Tabelle »\S+«)/) {
-			$key = $1;
-			if ($msg =~ /elapsed ([\d.]+) s/) {
+			$msg = $key = $1;
+			$key =~ s/"\S+"/"..."/;
+			if ($line =~ /elapsed ([\d.]+) s/) {
 				$time = $1;
 			}
 
@@ -238,9 +240,15 @@ sub parse ($$$$$)
 			$key =~ s/(on tuple|auf Tupel) \([\d, ]+\)/$1 (...)/g;
 			$key =~ s/ bei Zeichen \d+//;
 
+		# temporary file: path "base/pgsql_tmp/pgsql_tmp27915.5", size 23552000
 		# temporäre Datei: Pfad »base/pgsql_tmp/pgsql_tmp25529.0«, Größe 57974784
-		} elsif ($msg =~ /^(temporäre Datei): Pfad »(\S+)«, Größe \d+/) {
+		} elsif ($msg =~ /^(temporary file|temporäre Datei): /) {
 			$key = $1;
+
+		# recovery restart point at E4/9C19EE20
+		} elsif ($msg =~ /^(recovery restart point)( at)/) {
+			$key = "$1 ...";
+			$msg = "$1$2 ...";
 
 		# restored log file "000000010000042300000054" from archive
 		} elsif ($msg =~ /^restored log file ".*" from archive/) {
@@ -256,11 +264,20 @@ sub parse ($$$$$)
 		} elsif ($msg =~ /^konnte Verzeichnis >>.*<< nicht leeren: /) {
 
 		} else {
-			print STDERR "$file:$.: Could not parse: $localtype:  " . fmt_error ($msg) . "\n";
+			print STDERR "\r$file:$.: Could not parse: $localtype:  " . fmt_error ($msg) . "\n";
 		}
 
 	} elsif ($type =~ /PANIC|FATAL|ERROR|WARNING/) {
-		if ($msg =~ /^(konnte Block \d+ von tempor..?rer Datei nicht schreiben|konnte Relation \S+ nicht erweitern)/) {
+		if ($msg =~ /^(permission denied for relation)/) {
+			$key = $1;
+
+		} elsif ($msg =~ /^(syntax error)/) {
+			$key = $1;
+
+		} elsif ($msg =~ /^(no pg_hba.conf entry)/) {
+			$key = $1;
+
+		} elsif ($msg =~ /^(konnte Block \d+ von tempor..?rer Datei nicht schreiben|konnte Relation \S+ nicht erweitern)/) {
 			$key =~ s/\d+/.../g;
 
 		# FEHLER: ungültige Byte-Sequenz für Kodierung »...«: 0xf66e656b 
@@ -270,14 +287,14 @@ sub parse ($$$$$)
 
 		} else {
 			#$vars{type}->{$type =~ /^F/ ? 'FATAL' : 'WARNING'}++; #XXX
-			$key =~ s/bei Zeichen \d+/bei Zeichen .../;
+			$key =~ s/(at character|bei Zeichen) \d+/$1 .../;
 			$msg = $key;
 			$key =~ s/».*?«/»...«/g;
 			$key =~ s/>>.*?<</>>...<</g;
 		}
 
 	} else {
-		print STDERR "$file:$.: Unknown statement type $localtype: $localtype:  " . fmt_error ($msg) . "\n";
+		print STDERR "\r$file:$.: Unknown statement type $localtype: $localtype:  " . fmt_error ($msg) . "\n";
 	}
 
 	$key =~ s/\s+/ /g;
@@ -319,7 +336,7 @@ sub parse0 ($$$)
 		my $msglist = $statement{$lastkey}->{examples}->{$lastmsg}->{msg};
 		@{$msglist}[@$msglist - 1]->{msg} .= "\n$line";
 	} else {
-		print STDERR "$file:$.: Could not parse: " . fmt_error ($line) . "\n";
+		print STDERR "\r$file:$.: Could not parse: " . fmt_error ($line) . "\n";
 		$vars{unknown_msgs}++;
 	}
 }
