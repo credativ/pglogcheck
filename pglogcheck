@@ -245,37 +245,29 @@ sub parse ($$$$$)
 		} elsif ($msg =~ /^(temporary file|temporäre Datei): /) {
 			$key = $1;
 
-		# recovery restart point at E4/9C19EE20
-		} elsif ($msg =~ /^(recovery restart point)( at)/) {
-			$key = "$1 ...";
-			$msg = "$1$2 ...";
-
 		# restored log file "000000010000042300000054" from archive
 		} elsif ($msg =~ /^restored log file ".*" from archive/) {
 			$key =~ s/".*"/"..."/;
-
-		} elsif ($msg =~ /^(incomplete startup packet|unvollst..?ndiges Startpaket|could not receive data from client|konnte Daten vom Client nicht empfangen|unexpected EOF on client connection|unerwartetes EOF auf Client-Verbindung|incomplete message from client|received SIGHUP, reloading configuration files|SIGHUP empfangen, Konfigurationsdateien werden neu geladen)/) {
-
-		# pam_authenticate failed: Conversation error
-		# pam_authenticate fehlgeschlagen
-		} elsif ($msg =~ /^(pam_authenticate |konnte Daten nicht an den Client senden)/) {
 
 		# konnte Verzeichnis >>pg_subtrans<< nicht leeren: anscheinender ?berlauf
 		} elsif ($msg =~ /^konnte Verzeichnis >>.*<< nicht leeren: /) {
 
 		} else {
-			print STDERR "\r$file:$.: Could not parse: $localtype:  " . fmt_error ($msg) . "\n";
+			$key =~ s/\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?\b/<timestamp>/g; # replace timestamps
+			$key =~ s/\b[A-F0-9]{2}\/[A-F0-9]{8}\b/??\/????????/g; # replace LSNs
+			$key =~ s/\b[1-9]\d*(?:\.\d+)?\b/?/g; # replace non-zero numbers
 		}
 
 	} elsif ($type =~ /PANIC|FATAL|ERROR|WARNING/) {
-		if ($msg =~ /^(permission denied for relation)/) {
-			$key = $1;
+		if ($msg =~ /^(permission denied for (?:schema|relation))/) {
+			$key = "$1 ...";
 
-		} elsif ($msg =~ /^(syntax error)/) {
-			$key = $1;
+		} elsif ($msg =~ /^syntax error/) {
+			$key =~ s/(near) ".+"/$1 "..."/;
+			$key =~ s/(character) \d+/$1 ?/;
 
 		} elsif ($msg =~ /^(no pg_hba.conf entry)/) {
-			$key = $1;
+			$key = "$1 ...";
 
 		} elsif ($msg =~ /^(konnte Block \d+ von tempor..?rer Datei nicht schreiben|konnte Relation \S+ nicht erweitern)/) {
 			$key =~ s/\d+/.../g;
@@ -285,12 +277,15 @@ sub parse ($$$$$)
 			$key =~ s/: 0x[0-9a-f]+/: .../;
 			$msg = $key;
 
-		} else {
+		} else { # generic rules
 			#$vars{type}->{$type =~ /^F/ ? 'FATAL' : 'WARNING'}++; #XXX
-			$key =~ s/(at character|bei Zeichen) \d+/$1 .../;
+			#$key =~ s/(at character|bei Zeichen) \d+/$1 .../;
+			$key =~ s/\b[A-F0-9]{2}\/[A-F0-9]{8}\b/??\/????????/g; # replace LSNs
+			$key =~ s/\b[1-9]\d*(?:\.\d+)?\b/?/g; # replace non-zero numbers
 			$msg = $key;
-			$key =~ s/».*?«/»...«/g;
-			$key =~ s/>>.*?<</>>...<</g;
+			$key =~ s/".+?"/"..."/g;
+			$key =~ s/».+?«/»...«/g;
+			$key =~ s/>>.+?<</>>...<</g;
 		}
 
 	} else {
@@ -353,7 +348,7 @@ sub parse_file ($)
 	while (<FILE>) {
 		if ($term) {
 			$bytes += length $_;
-			print STDERR "\r$file: $. lines, $bytes bytes " if ($. % 10000 == 0);
+			print STDERR "\r$file: $. lines, $bytes bytes " if ($. % 50000 == 0);
 		}
 		chomp;
 		$vars{lines}++;
